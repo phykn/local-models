@@ -4,39 +4,30 @@ import json
 import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 
-from .. import common
-from ..common import ROOT, WEIGHTS, pid_of
-from .backends import make_backend
+from .. import ROOT, WEIGHTS, servers
+from ..registry import RegistryError
+from .backends import KevHttpBackend
 from .registry import load_registry
 
 KEV_SRC = ROOT / "vendor" / "kev"
 
 
 def info_of(spec):
-    return asyncio.run(make_backend(spec).info())
-
-
-def mem_budget_gb():
-    total = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"])) / 2**30
-    return total * 0.75   # leave a quarter of unified memory to macOS and everything else
+    return asyncio.run(KevHttpBackend(spec).info())
 
 
 def models(reg, a):
-    # LOCAL-MODELS.app reads this; llmctl list --json has the same shape
-    ms = [{"name": s.name, "port": s.port, "memory_gb": s.memory_gb, "default": s.name == reg.default, "note": None, "missing": False}
-          for s in reg.models.values() if s.backend == "kev-http"]
-    print(json.dumps(ms) if a.json else "\n".join(f"{m['name']:<14} :{m['port']}  {m['memory_gb']:.0f} GB" for m in ms))
+    rows = [servers.list_row(reg, s) for s in reg.models.values()]
+    print(json.dumps(rows) if a.json else "\n".join(f"{r['name']:<14} :{r['port']}  {r['memory_gb']:.0f} GB" for r in rows))
 
 
 def status(reg, a):
     rows = []
     for spec in reg.models.values():
-        info = info_of(spec) if spec.backend == "kev-http" else None
-        pid = pid_of(spec.name)
-        rows.append({"name": spec.name, "state": common.state(info, pid), "url": f"http://127.0.0.1:{spec.port}"})
+        info, pid = info_of(spec), servers.pid_of(spec.name)
+        rows.append(servers.status_row(spec, info, pid, f"http://127.0.0.1:{spec.port}"))
         if not a.json:
             detail = f"{info['backend']} {info['dtype']}" if info else ""
             default = " (default)" if spec.name == reg.default else ""
@@ -47,16 +38,14 @@ def status(reg, a):
 
 def start(reg, a):
     spec = reg.get(a.name)
-    if spec.backend != "kev-http":
-        sys.exit(f"{spec.name} uses backend {spec.backend!r}; kevctl only manages kev-http models")
     if info_of(spec):
         print(f"{spec.name} is already running on :{spec.port}")
         return
-    if pid := pid_of(spec.name):
+    if pid := servers.pid_of(spec.name):
         # a second kev.serve on the same port would fail and orphan the first one's pid file
-        print(f"{spec.name} is still starting (pid {pid}); see {common.LOGS / f'{spec.name}.log'}")
+        print(f"{spec.name} is still starting (pid {pid}); see {servers.LOGS / f'{spec.name}.log'}")
         return
-    common.refuse_busy_port(reg, spec)
+    servers.refuse_busy_port(reg, spec)
     from kev.checkpoint import is_hub_id   # imports torch; only start needs it
 
     run = reg.resolve_run(spec)
@@ -66,38 +55,21 @@ def start(reg, a):
     if not is_hub_id(run) and not Path(run, "head.pt").exists():
         # kev.serve silently falls back to runs/smoke when --run has no head.pt
         sys.exit(f"{run} has no head.pt; is the checkpoint path in kev.toml right?")
-    running = [s for s in reg.models.values() if s.name != spec.name and pid_of(s.name)]
-    need = spec.memory_gb + sum(s.memory_gb for s in running)
-    if need > mem_budget_gb():
-        print(f"warning: {need:.0f} GB with {', '.join(s.name for s in running)} running, budget {mem_budget_gb():.0f} GB")
-    common.LOGS.mkdir(exist_ok=True)
-    log = open(common.LOGS / f"{spec.name}.log", "ab")
     cmd = [sys.executable, "-m", "kev.serve", "--run", run, "--port", str(spec.port)]
-    p = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, start_new_session=True, cwd=ROOT)
-    (common.LOGS / f"{spec.name}.pid").write_text(str(p.pid))
-    print(f"starting {spec.name} (pid {p.pid}), log: {common.LOGS / f'{spec.name}.log'}")
-    deadline = time.time() + a.timeout
-    while time.time() < deadline:
-        if p.poll() is not None:
-            (common.LOGS / f"{spec.name}.pid").unlink(missing_ok=True)
-            tail = (common.LOGS / f"{spec.name}.log").read_text(errors="replace").splitlines()[-20:]
-            sys.exit(f"{spec.name} exited with {p.returncode}:\n" + "\n".join(tail))
-        if info := info_of(spec):
-            print(f"{spec.name} ready on :{spec.port} ({info['backend']} {info['dtype']})")
-            return
-        time.sleep(2)
-    sys.exit(f"{spec.name} did not answer within {a.timeout}s; it is still starting, see the log")
+    info = servers.launch(spec, cmd, lambda: info_of(spec), a.timeout)
+    print(f"{spec.name} ready on :{spec.port} ({info['backend']} {info['dtype']})")
 
 
 def stop(reg, a):
-    common.stop(reg.get(a.name).name)
+    servers.stop(reg.get(a.name).name)
 
 
 def port(reg, a):
     spec = reg.get(a.name)
-    if pid_of(spec.name) or info_of(spec):
+    if servers.pid_of(spec.name) or info_of(spec):
         sys.exit(f"stop {spec.name} before changing its port")
-    common.set_port(reg, spec.name, a.port, load_registry)
+    reg.set_port(spec.name, a.port)
+    print(f"{spec.name} now uses port {a.port}")
 
 
 def merge(reg, a):
@@ -121,7 +93,10 @@ def main():
     a = ap.parse_args()
     os.environ.setdefault("HF_HOME", str(WEIGHTS))   # inherited by kev.serve and the merge script
     os.environ.setdefault("HF_HUB_OFFLINE", "1")     # use only weights already in HF_HOME; HF_HUB_OFFLINE=0 allows downloading
-    a.fn(load_registry(a.registry), a)
+    try:
+        a.fn(load_registry(a.registry), a)
+    except RegistryError as e:
+        sys.exit(str(e))
 
 
 if __name__ == "__main__":

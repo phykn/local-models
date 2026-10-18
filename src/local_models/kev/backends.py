@@ -1,21 +1,11 @@
 import os
 import time
-from typing import Protocol
 
 import httpx
-
-from .registry import ModelSpec
 
 
 class BackendError(Exception):
     pass
-
-
-class Backend(Protocol):
-    spec: ModelSpec
-
-    async def decide(self, state: str, questions: dict) -> dict: ...
-    async def info(self) -> dict | None: ...
 
 
 def normalize(raw, min_confidence):
@@ -36,6 +26,8 @@ def normalize(raw, min_confidence):
 
 
 class KevHttpBackend:
+    """A running kev.serve, through its /v1/systemone API."""
+
     def __init__(self, spec, timeout=300):
         self.spec = spec
         self.url = f"http://127.0.0.1:{spec.port}"
@@ -47,12 +39,12 @@ class KevHttpBackend:
         body = {"state": state, "model": "kev-latest", "questions": questions}
         t0 = time.perf_counter()
         if await self.info() is None:   # models can share a port, so the server there may be another model
-            raise BackendError(f"model {self.spec.name!r} is not running on {self.url}. Start it with: kevctl start {self.spec.name}")
+            raise BackendError(self.not_running())
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as c:
                 r = await c.post(f"{self.url}/v1/systemone", json=body, headers=self.headers)
         except httpx.ConnectError:
-            raise BackendError(f"model {self.spec.name!r} is not running on {self.url}. Start it with: kevctl start {self.spec.name}")
+            raise BackendError(self.not_running())
         except httpx.TimeoutException:
             raise BackendError(f"model {self.spec.name!r} did not answer within {self.timeout}s")
         if r.status_code == 422:
@@ -76,17 +68,10 @@ class KevHttpBackend:
             return None
         return {k: m.get(k) for k in ("run", "base", "backend", "dtype", "temperature", "device")}
 
-
     def serves(self, run):
         # kev.serve reports the --run it got: the id as written, or a local checkpoint as an absolute path
         want = self.spec.run
         return want is None or run == want or run.endswith("/" + want.strip("/"))
 
-
-BACKENDS = {"kev-http": KevHttpBackend}
-
-
-def make_backend(spec, **kw):
-    if spec.backend not in BACKENDS:
-        raise BackendError(f"model {spec.name!r}: unknown backend {spec.backend!r} (known: {', '.join(BACKENDS)})")
-    return BACKENDS[spec.backend](spec, **kw)
+    def not_running(self):
+        return f"model {self.spec.name!r} is not running on {self.url}. Start it with: kevctl start {self.spec.name}"

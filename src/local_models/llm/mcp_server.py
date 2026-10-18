@@ -1,9 +1,7 @@
-import tomllib
-from contextlib import suppress
-
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from ..registry import RegistryError
 from .backends import BackendError, OpenAIBackend
 from .registry import load_registry
 
@@ -20,9 +18,7 @@ reg = load_registry()
 
 def registry():
     global reg
-    # LOCAL-MODELS.app can change a port in llm.toml while this server runs; keep the last good one if it is broken
-    with suppress(OSError, tomllib.TOMLDecodeError, KeyError, TypeError):
-        reg = load_registry(reg.path)
+    reg = reg.reload()   # LOCAL-MODELS.app can change a port in llm.toml while this server runs
     return reg
 
 
@@ -53,8 +49,8 @@ async def ask(prompt: str, system: str | None = None, model: str | None = None, 
     messages = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt}]
     try:
         out = await OpenAIBackend(registry().get(model)).chat(messages, think=think, max_tokens=max_tokens)
-    except (KeyError, BackendError) as e:
-        raise ToolError(str(e.args[0]) if e.args else str(e))
+    except (RegistryError, BackendError) as e:
+        raise ToolError(str(e))
     return {k: out[k] for k in ("model", "text", "finish_reason", "usage")}
 
 

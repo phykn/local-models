@@ -31,10 +31,11 @@ open LOCAL-MODELS.app
 
 The window has one section for Kev and one for the LLMs. Each section runs one model at a time, and the two sections are independent, so you can run either one or both.
 
-- Pick a model, then press **Start**. The section shows the address once the model answers.
-- **PORT**, left of Start, is the selected model's port. Edit it and press Return to save it to `kev.toml` or `llm.toml`.
-- The memory bar at the bottom shows free memory. If a model needs more than is free, the app asks before starting it.
-- Quitting the app, even with Force Quit, stops the models it started. A model started from the command line keeps running and shows as "not started here" if it came from another checkout.
+- Pick a model, then press **Start**. Once the model answers, its row turns green and the address appears under the list, with a button to copy it.
+- The picked model's port (`:8081`) sits in a small field. Click it, type a new port and press Return to save it to `kev.toml` or `llm.toml`; Escape cancels. Ports can change only while nothing in that section runs.
+- A model's memory turns orange when it needs more than is free, and starting it then asks first. The bar at the bottom fills with the memory in use, turning orange and then red as it runs out.
+- When a start fails, the section says why and **Show Log** opens the model's log in `logs/`.
+- Quitting the app, even with Force Quit, stops the models it started. A model started from the command line keeps running; one started from another checkout shows as "Running, not started here" and can only be stopped there.
 
 ## Claude Code
 
@@ -105,7 +106,7 @@ think = { temperature = 1.0, top_p = 0.95, top_k = 20 }
 nothink = { temperature = 0.7, top_p = 0.8, top_k = 20, presence_penalty = 1.5 }
 ```
 
-Pin `run` to a commit so the weights do not change under you.
+Pin `run` to a commit so the weights do not change under you. A key that is not listed above is an error, so a typo cannot silently fall back to a default.
 
 ## Versions
 
@@ -113,9 +114,10 @@ One environment serves both. Kev's MLX backend needs `mlx-lm` below 0.32, which 
 
 ## Layout
 
-- `src/local_models/kev/` and `src/local_models/llm/`: each has `registry.py` (reads its `.toml`), `backends.py` (calls a running server), `ctl.py` (`kevctl` / `llmctl`) and `mcp_server.py` (`kev-mcp` / `llm-mcp`).
-- `src/local_models/common.py`: what both ctls share: pid files, ports, stopping.
-- `app/`: the Mac app in Swift. It knows nothing about Kev or Qwen; it runs `list --json`, `status --json`, `start`, `stop` and `port` on each ctl.
+- `src/local_models/kev/` and `src/local_models/llm/`: each has `registry.py` (its model spec and `.toml`), `backends.py` (calls a running server), `ctl.py` (`kevctl` / `llmctl`) and `mcp_server.py` (`kev-mcp` / `llm-mcp`).
+- `src/local_models/registry.py`: what `kev.toml` and `llm.toml` share: loading, the default model, and rewriting a port in place.
+- `src/local_models/servers.py`: the server processes both ctls run: pid files and logs in `logs/`, starting and waiting until the model answers, stopping, and the `list --json` / `status --json` rows the app reads.
+- `app/Sources/`: the Mac app in Swift. It knows nothing about Kev or Qwen; it runs `list --json`, `status --json`, `start`, `stop` and `port` on each ctl (`Ctl.swift`). `Section.swift` is one ctl's part of the window, `ModelRow.swift` one model in it. `app/icon.swift` draws the icon at build time.
 - `vendor/kev`: the Kev checkout. `weight/`: downloaded weights (`HF_HOME`). `logs/`: server logs and pid files.
 
 ## Evaluate and test

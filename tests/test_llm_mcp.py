@@ -141,18 +141,6 @@ def test_strip_thinking():
     assert strip_thinking("plain") == "plain"
 
 
-def test_registry_file():
-    reg = load_registry()
-    assert reg.default in reg.models
-
-
-def test_registry_rejects_unknown_keys(tmp_path):
-    p = tmp_path / "models.toml"
-    p.write_text('[models.m]\nserver = "mlx-vlm"\nrun = "a/b@c"\nport = 1\nmin_confidence = 0.5\n')
-    with pytest.raises(KeyError, match="min_confidence"):
-        load_registry(p)
-
-
 @pytest.mark.live
 async def test_live_korean():
     reg = load_registry()

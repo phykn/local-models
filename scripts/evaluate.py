@@ -6,8 +6,9 @@ import time
 from datetime import date
 from pathlib import Path
 
-from local_models.kev.backends import make_backend
-from local_models.kev.registry import ROOT, load_registry
+from local_models import ROOT
+from local_models.kev.backends import KevHttpBackend
+from local_models.kev.registry import load_registry
 
 ERROR_BUDGET = 0.05
 
@@ -33,7 +34,7 @@ def coverage(rows):
 
 
 async def run_model(spec, records):
-    backend = make_backend(spec)
+    backend = KevHttpBackend(spec)
     rows, latencies = [], []
     for i, rec in enumerate(records):
         qs = {qid: {k: v for k, v in q.items() if k != "label"} for qid, q in rec["questions"].items()}
@@ -72,7 +73,7 @@ async def main():
     if a.models:
         specs = [reg.get(n) for n in a.models.split(",")]
     else:
-        specs = [s for s in reg.models.values() if await make_backend(s).info()]
+        specs = [s for s in reg.models.values() if await KevHttpBackend(s).info()]
     if not specs:
         sys.exit("no model running; start one with: kevctl start <name>")
     Path(a.out).mkdir(parents=True, exist_ok=True)

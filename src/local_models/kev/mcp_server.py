@@ -1,10 +1,8 @@
-import tomllib
-from contextlib import suppress
-
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
-from .backends import BackendError, make_backend
+from ..registry import RegistryError
+from .backends import BackendError, KevHttpBackend
 from .registry import load_registry
 
 READ_ONLY = {"readOnlyHint": True, "openWorldHint": False}
@@ -22,18 +20,15 @@ reg = load_registry()
 
 def registry():
     global reg
-    # LOCAL-MODELS.app can change a port in kev.toml while this server runs; keep the last good one if it is broken
-    with suppress(OSError, tomllib.TOMLDecodeError, KeyError, TypeError):
-        reg = load_registry(reg.path)
+    reg = reg.reload()   # LOCAL-MODELS.app can change a port in kev.toml while this server runs
     return reg
 
 
 async def ask(model, text, questions):
     try:
-        backend = make_backend(registry().get(model))
-        return await backend.decide(text, questions)
-    except (KeyError, BackendError) as e:
-        raise ToolError(str(e.args[0]) if e.args else str(e))
+        return await KevHttpBackend(registry().get(model)).decide(text, questions)
+    except (RegistryError, BackendError) as e:
+        raise ToolError(str(e))
 
 
 async def ask_one(model, text, question):
@@ -47,7 +42,7 @@ async def list_models() -> dict:
     reg = registry()
     models = []
     for spec in reg.models.values():
-        info = await make_backend(spec).info()
+        info = await KevHttpBackend(spec).info()
         models.append({"name": spec.name, "description": spec.description, "default": spec.name == reg.default,
                        "running": info is not None, "min_confidence": spec.min_confidence,
                        **({"serving": info} if info else {"start": f"kevctl start {spec.name}"})})

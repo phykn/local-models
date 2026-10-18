@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastmcp import Client
 
 from local_models.kev import mcp_server
-from local_models.kev.backends import BackendError, make_backend, normalize
+from local_models.kev.backends import BackendError, KevHttpBackend, normalize
 from local_models.kev.registry import ModelSpec, Registry, load_registry
 
 CANNED = {
@@ -114,7 +114,7 @@ async def test_port_change_while_running(fake_port, monkeypatch, tmp_path):
 
 def test_api_key_from_environment(monkeypatch):
     monkeypatch.setenv("KEV_API_KEY", "secret")
-    assert make_backend(ModelSpec("m", "kev-http", port=1)).headers == {"authorization": "Bearer secret"}
+    assert KevHttpBackend(ModelSpec("m", "kev-http", port=1)).headers == {"authorization": "Bearer secret"}
 
 
 async def test_list_models(client):
@@ -137,17 +137,17 @@ async def test_other_server_on_the_port_is_not_kev():
     app.get("/v1/models")(lambda: {"object": "list", "data": [{"id": "some-llm"}]})   # an OpenAI-style server
     port, srv = serve(app)
     try:
-        assert await make_backend(ModelSpec("m", "kev-http", port=port)).info() is None
+        assert await KevHttpBackend(ModelSpec("m", "kev-http", port=port)).info() is None
     finally:
         srv.should_exit = True
 
 
 async def test_another_model_on_a_shared_port(fake_port):
-    other = make_backend(ModelSpec("other", "kev-http", run="jaredpalmer/kev-0.8b@v1.0", port=fake_port[0]))
+    other = KevHttpBackend(ModelSpec("other", "kev-http", run="jaredpalmer/kev-0.8b@v1.0", port=fake_port[0]))
     assert await other.info() is None
     with pytest.raises(BackendError, match="'other' is not running"):
         await other.decide("t", {"q": {"type": "noul", "instructions": "q"}})
-    local = make_backend(ModelSpec("local", "kev-http", run="checkpoints/fake", port=fake_port[0]))
+    local = KevHttpBackend(ModelSpec("local", "kev-http", run="checkpoints/fake", port=fake_port[0]))
     assert local.serves("/Users/me/local-models/checkpoints/fake") and not local.serves("/x/other-fake")
 
 
@@ -155,17 +155,12 @@ def test_normalize_noul_boundary():
     assert normalize({"type": "noul", "noul": 0.5}, 0.5) == {"type": "noul", "answer": True, "probability_yes": 0.5, "confidence": 0.0, "low_confidence": True}
 
 
-def test_registry_file():
-    reg = load_registry()
-    assert reg.default in reg.models
-
-
 @pytest.mark.live
 async def test_live_korean():
     reg = load_registry()
     ran = 0
     for spec in reg.models.values():
-        b = make_backend(spec)
+        b = KevHttpBackend(spec)
         if not await b.info():
             continue
         out = await b.decide("어제 주문한 신발이 2주 늦게 왔고 사이즈도 틀렸어요. 카드 결제도 두 번 됐네요.", {

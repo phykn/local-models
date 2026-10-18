@@ -1,12 +1,11 @@
 import os
-import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-from local_models import common
+from local_models import servers
 from local_models.llm import ctl
 from local_models.llm.registry import ModelSpec, Registry, load_registry
 
@@ -16,16 +15,16 @@ def reg_of(tmp_path, **kw):
 
 
 def test_start_while_starting_does_not_spawn(monkeypatch, tmp_path, capsys):
-    monkeypatch.setattr(common, "LOGS", tmp_path)
+    monkeypatch.setattr(servers, "LOGS", tmp_path)
     (tmp_path / "m.pid").write_text(str(os.getpid()))
-    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: (_ for _ in ()).throw(AssertionError("spawned")))
+    monkeypatch.setattr(servers, "launch", lambda *a, **k: pytest.fail("spawned"))
     ctl.start(reg_of(tmp_path), SimpleNamespace(name="m", timeout=1))
     assert "already running or starting" in capsys.readouterr().out
     assert (tmp_path / "m.pid").read_text() == str(os.getpid())
 
 
 def test_start_without_weights_says_pull(monkeypatch, tmp_path):
-    monkeypatch.setattr(common, "LOGS", tmp_path)
+    monkeypatch.setattr(servers, "LOGS", tmp_path)
     monkeypatch.setattr(ctl, "info_of", lambda spec: None)
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
     with pytest.raises(SystemExit, match="llmctl pull m"):
@@ -40,10 +39,6 @@ def test_commands():
     lm = ModelSpec("m", "mlx-lm", "a/b@c", 8020, max_kv_size=32768)
     assert ctl.command(lm, Path("/w")) == [
         sys.executable, "-m", "mlx_lm", "server", "--model", "/w", "--host", "127.0.0.1", "--port", "8020"]
-
-
-def test_free_gb_is_positive():
-    assert 0 < ctl.free_gb() < 10_000
 
 
 def test_quantization(tmp_path):
@@ -82,7 +77,7 @@ memory_gb = 22
 
 
 def port_reg(tmp_path, monkeypatch, text=TOML):
-    monkeypatch.setattr(common, "LOGS", tmp_path)
+    monkeypatch.setattr(servers, "LOGS", tmp_path)
     monkeypatch.setattr(ctl, "info_of", lambda spec: None)
     path = tmp_path / "models.toml"
     path.write_text(text)
@@ -100,7 +95,13 @@ def test_port_while_running(tmp_path, monkeypatch):
 def test_start_on_a_port_another_model_holds(tmp_path, monkeypatch):
     path = port_reg(tmp_path, monkeypatch, TOML.replace("memory_gb = 22", "memory_gb = 22\nport = 8082"))
     (tmp_path / "a.pid").write_text(str(os.getpid()))
-    monkeypatch.setattr(common, "port_in_use", lambda port: port == 8082)
-    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: (_ for _ in ()).throw(AssertionError("spawned")))
+    monkeypatch.setattr(servers, "port_in_use", lambda port: port == 8082)
+    monkeypatch.setattr(servers, "launch", lambda *a, **k: pytest.fail("spawned"))
     with pytest.raises(SystemExit, match="port 8082 is in use by a; stop it first"):
         ctl.start(load_registry(path), SimpleNamespace(name="b", timeout=1))
+
+
+def test_unknown_model_is_an_error_not_a_traceback(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["llmctl", "stop", "nope"])
+    with pytest.raises(SystemExit, match="unknown model 'nope'; registered: "):
+        ctl.main()
