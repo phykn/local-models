@@ -1,0 +1,37 @@
+[project]
+name = "local-models"
+version = "0.1.0"
+description = "Local Kev decision models and Qwen LLMs on Apple Silicon, with MCP servers and one Mac app"
+requires-python = ">=3.12,<3.14"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+    "kev[serve]",       # brings mlx-lm <0.32, which Kev's MLX backend requires
+    "mlx-vlm==0.7.8",
+    "fastmcp>=4.1",
+    "httpx>=0.28",
+]
+
+[project.scripts]
+kevctl = "local_models.kev.ctl:main"
+kev-mcp = "local_models.kev.mcp_server:main"
+llmctl = "local_models.llm.ctl:main"
+llm-mcp = "local_models.llm.mcp_server:main"
+
+[dependency-groups]
+dev = ["pytest>=9", "pytest-asyncio>=1.0"]
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv.sources]
+kev = { path = "vendor/kev", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = ["live: needs running models (kevctl start / llmctl start)"]

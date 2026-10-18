@@ -1,0 +1,27 @@
+# run is a Hugging Face id@commit, or a local model directory relative to this file.
+# server is mlx-vlm or mlx-lm. max_kv_size is passed only to mlx-vlm.
+# memory_gb is weights + KV cache at max_kv_size + headroom; ctl warns when free memory is below it.
+# Models may share a port; only one of them can run at a time.
+
+default = "qwen3.8-27b"
+
+[models."qwen3.8-27b"]
+server = "mlx-vlm"
+run = "mlx-community/Qwen3.8-27B-mxfp4@97ab0819817ab1c61d7d39f9169fc71999915641"
+port = 8082
+memory_gb = 21
+max_kv_size = 32768
+description = "Qwen3.8-27B, 4-bit mxfp4. Text and image input"
+# sampling from the model card, for thinking on and off
+think = { temperature = 1.0, top_p = 0.95, top_k = 20 }
+nothink = { temperature = 0.7, top_p = 0.8, top_k = 20, presence_penalty = 1.5 }
+
+[models."qwen3.6-35b-a3b"]
+server = "mlx-vlm"
+run = "mlx-community/Qwen3.6-35B-A3B-mxfp4@833013b27a1f7c6dbb008b55d37c387ea22ea89d"
+port = 8082
+memory_gb = 22
+max_kv_size = 32768
+description = "Qwen3.6-35B-A3B MoE, 4-bit mxfp4. About six times faster than qwen3.8-27b, weaker at coding and reasoning. Text and image input"
+think = { temperature = 1.0, top_p = 0.95, top_k = 20, presence_penalty = 1.5 }
+nothink = { temperature = 0.7, top_p = 0.8, top_k = 20, presence_penalty = 1.5 }

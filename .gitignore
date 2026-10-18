@@ -1,0 +1,11 @@
+.venv/
+vendor/
+weight/
+logs/
+checkpoints/
+evals/results/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.DS_Store
+LOCAL-MODELS.app/
