@@ -12,8 +12,7 @@ Servers listen only on `127.0.0.1` and have no authentication.
 |---|---|---|
 | [Kev-4B](https://huggingface.co/jaredpalmer/kev-4b) | 16 GB | Default |
 | [Kev-0.8B](https://huggingface.co/jaredpalmer/kev-0.8b) | 3 GB | Smallest |
-| [Malkuth-2B](https://huggingface.co/dhtocks/malkuth-2b) | 7 GB | Best calibrated on Korean. Non-commercial |
-| [Jev-Style-0.8B](https://huggingface.co/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-MLX) | 8 GB | Accepts states up to 25.6k tokens |
+| [Malkuth-2B](https://huggingface.co/dhtocks/malkuth-2b) | 7 GB | Fewest high-confidence errors on Korean. Non-commercial |
 
 **LLMs** are for drafting, translating, summarizing, or getting a second opinion. They accept text and image input.
 
@@ -71,8 +70,6 @@ claude mcp add llm-local --scope user -- "$PWD/.venv/bin/llm-mcp"
 
 Models are registered in `kev.toml` and `llm.toml`. Each entry sets the weights, port, memory, and sampling. Pin `run` to a commit. Unknown keys are an error.
 
-In `kev.toml`, the `backend` key picks the server. `kev-http` runs `kev.serve`. `jev-style` runs `local_models.kev.jev_style`, which serves the same API.
-
 ## Test
 
 ```bash
@@ -83,4 +80,4 @@ In `kev.toml`, the `backend` key picks the server. `kev-http` runs `kev.serve`. 
 
 ## License
 
-This project is MIT licensed. Kev, Jev-Style, Qwen, MiniCPM-V, and Bonsai are Apache-2.0. Malkuth-2B is CC BY-NC 4.0, which allows non-commercial use only.
+This project is MIT licensed. Kev, Qwen, MiniCPM-V, and Bonsai are Apache-2.0. Malkuth-2B is CC BY-NC 4.0, which allows non-commercial use only.

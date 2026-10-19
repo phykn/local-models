@@ -3,10 +3,6 @@ from dataclasses import dataclass
 
 from .. import ROOT, registry
 
-# kev-http: kev.serve (LoRA + head.pt checkpoints); jev-style: local_models.kev.jev_style (Jev-Style MLX repositories).
-# Both serve /v1/systemone, so the MCP server talks to either the same way.
-BACKENDS = ("kev-http", "jev-style")
-
 
 @dataclass(frozen=True)
 class ModelSpec:
@@ -19,8 +15,8 @@ class ModelSpec:
     min_confidence: float = 0.5
 
     def __post_init__(self):
-        if self.backend not in BACKENDS:
-            raise ValueError(f"backend must be one of {', '.join(BACKENDS)}, not {self.backend!r}")
+        if self.backend != "kev-http":
+            raise ValueError(f"backend must be kev-http, not {self.backend!r}")
 
 
 class Registry(registry.Registry):

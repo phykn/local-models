@@ -46,21 +46,16 @@ def start(reg, a):
         print(f"{spec.name} is still starting (pid {pid}); see {servers.LOGS / f'{spec.name}.log'}")
         return
     servers.refuse_busy_port(reg, spec)
-    run = reg.resolve_run(spec)
-    if spec.backend == "jev-style":
-        if "@" not in run and not Path(run).exists():
-            sys.exit(f"{run} does not exist; a Hub model needs id@revision in kev.toml")
-        cmd = [sys.executable, "-m", "local_models.kev.jev_style", "--run", run, "--port", str(spec.port)]
-    else:
-        from kev.checkpoint import is_hub_id   # imports torch; only start needs it
+    from kev.checkpoint import is_hub_id   # imports torch; only start needs it
 
-        if "@" not in run and not (reg.path.parent / run).exists():
-            # a missing local path like checkpoints/x also matches the Hub id pattern, and kev.serve would try to download it
-            sys.exit(f"{reg.path.parent / run} does not exist; a Hub model needs id@revision in kev.toml")
-        if not is_hub_id(run) and not Path(run, "head.pt").exists():
-            # kev.serve silently falls back to runs/smoke when --run has no head.pt
-            sys.exit(f"{run} has no head.pt; is the checkpoint path in kev.toml right?")
-        cmd = [sys.executable, "-m", "kev.serve", "--run", run, "--port", str(spec.port)]
+    run = reg.resolve_run(spec)
+    if "@" not in run and not (reg.path.parent / run).exists():
+        # a missing local path like checkpoints/x also matches the Hub id pattern, and kev.serve would try to download it
+        sys.exit(f"{reg.path.parent / run} does not exist; a Hub model needs id@revision in kev.toml")
+    if not is_hub_id(run) and not Path(run, "head.pt").exists():
+        # kev.serve silently falls back to runs/smoke when --run has no head.pt
+        sys.exit(f"{run} has no head.pt; is the checkpoint path in kev.toml right?")
+    cmd = [sys.executable, "-m", "kev.serve", "--run", run, "--port", str(spec.port)]
     info = servers.launch(spec, cmd, lambda: info_of(spec), a.timeout)
     print(f"{spec.name} ready on :{spec.port} ({info['backend']} {info['dtype']})")
 
@@ -79,8 +74,6 @@ def port(reg, a):
 
 def merge(reg, a):
     spec = reg.get(a.name)
-    if spec.backend != "kev-http":
-        sys.exit(f"{spec.name} is not a Kev LoRA checkpoint; only kev-http models can be merged")
     out = ROOT / "checkpoints" / f"{spec.name}-merged"
     cmd = [sys.executable, "scripts/merge_lora_checkpoint.py", "--lora", reg.resolve_run(spec), "--out", str(out), "--weights_dtype", "bf16"]
     subprocess.run(cmd, cwd=KEV_SRC, check=True)   # the script imports scripts.interpolate_checkpoint from the kev checkout
