@@ -62,7 +62,7 @@ def test_unknown_model(tmp_path):
 
 @pytest.mark.parametrize("table, error", [
     ('backend = "kev-http"\nmemory_gbb = 4', "unknown keys memory_gbb"),   # a typo must not silently become memory_gb = 0
-    ('backend = "other"\nport = 1', "backend must be kev-http, not 'other'"),
+    ('backend = "other"\nport = 1', "backend must be one of kev-http, jev-style, not 'other'"),
     ("port = 1", "missing 1 required positional argument: 'backend'"),
     ('backend = "kev-http"', "missing 1 required positional argument: 'port'"),   # the app and kev.serve need one
 ])

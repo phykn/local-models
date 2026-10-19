@@ -1,4 +1,5 @@
 # min_confidence is set per model because calibration differs between models.
+# memory_gb is the measured peak footprint (GiB, rounded up), which for an adapter model is while loading: the merge briefly holds two copies.
 
 default = "kev-4b"
 
@@ -14,6 +15,22 @@ description = "Kev-4B (Qwen3.5-4B-Base + LoRA). The default model"
 backend = "kev-http"
 run = "jaredpalmer/kev-0.8b@v1.0"
 port = 8081
-memory_gb = 4
+memory_gb = 3
 min_confidence = 0.5
 description = "Kev-0.8B. Faster, less accurate"
+
+[models."malkuth-2b"]
+backend = "kev-http"
+run = "dhtocks/malkuth-2b@37ae1672eebcf9ee5417418bd0be49f2e53d9087"
+port = 8081
+memory_gb = 7
+min_confidence = 0.5
+description = "Malkuth-2B (Kev-format LoRA on a Qwen3.8-2B distill). Best calibrated on Korean. Non-commercial license (CC BY-NC 4.0)"
+
+[models."jev-style-0.8b"]
+backend = "jev-style"
+run = "chaoliangUNSW/Jev-Style-0.8B-Decision-v3-MLX@1235ccd1c95d5228a07616cd7e323c9e0532c1dc"
+port = 8081
+memory_gb = 8
+min_confidence = 0.5
+description = "Jev-Style-0.8B-Decision-v3 on MLX (bf16). Small, multilingual, long states up to 25.6k tokens"

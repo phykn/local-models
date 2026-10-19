@@ -15,7 +15,7 @@ struct Project {
 
 let projects = [
     Project(key: "kev", title: "Kev", subtitle: "Decision models", ctl: root.appendingPathComponent(".venv/bin/kevctl")),
-    Project(key: "llm", title: "LLM", subtitle: "Qwen", ctl: root.appendingPathComponent(".venv/bin/llmctl")),
+    Project(key: "llm", title: "LLM", subtitle: "Qwen, MiniCPM-V, Bonsai", ctl: root.appendingPathComponent(".venv/bin/llmctl")),
 ]
 
 struct Model: Decodable {

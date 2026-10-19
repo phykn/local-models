@@ -1,6 +1,6 @@
 # run is a Hugging Face id@commit, or a local model directory relative to this file.
 # server is mlx-vlm or mlx-lm. max_kv_size is passed only to mlx-vlm.
-# memory_gb is weights + KV cache at max_kv_size + headroom; ctl warns when free memory is below it.
+# memory_gb is the measured peak footprint (GiB, rounded up) while loading and answering a ~28k-token prompt; ctl warns when free memory is below it.
 # Models may share a port; only one of them can run at a time.
 
 default = "qwen3.8-27b"
@@ -9,7 +9,7 @@ default = "qwen3.8-27b"
 server = "mlx-vlm"
 run = "mlx-community/Qwen3.8-27B-mxfp4@97ab0819817ab1c61d7d39f9169fc71999915641"
 port = 8082
-memory_gb = 21
+memory_gb = 23
 max_kv_size = 32768
 description = "Qwen3.8-27B, 4-bit mxfp4. Text and image input"
 # sampling from the model card, for thinking on and off
@@ -20,8 +20,31 @@ nothink = { temperature = 0.7, top_p = 0.8, top_k = 20, presence_penalty = 1.5 }
 server = "mlx-vlm"
 run = "mlx-community/Qwen3.6-35B-A3B-mxfp4@833013b27a1f7c6dbb008b55d37c387ea22ea89d"
 port = 8082
-memory_gb = 22
+memory_gb = 23
 max_kv_size = 32768
 description = "Qwen3.6-35B-A3B MoE, 4-bit mxfp4. About six times faster than qwen3.8-27b, weaker at coding and reasoning. Text and image input"
 think = { temperature = 1.0, top_p = 0.95, top_k = 20, presence_penalty = 1.5 }
+nothink = { temperature = 0.7, top_p = 0.8, top_k = 20, presence_penalty = 1.5 }
+
+[models."minicpm-v4.7-35b-a3b"]
+server = "mlx-vlm"
+run = "mlx-community/MiniCPM-V-4.7-35B-A3B-mxfp4@810419dd09762d63aad6da5b6a418c4af8946e60"
+port = 8082
+# measured: 21.8 GiB loaded, 24.4 at an 8k-token prompt; a 16k-token prompt ran out of GPU memory on a 32 GB Mac
+memory_gb = 25
+max_kv_size = 32768
+description = "MiniCPM-V 4.7 35B-A3B MoE (Qwen3.5-MoE language tower), 4-bit mxfp4. Strong at image input"
+# the model card gives one sampling set, for instruct mode
+think = { temperature = 0.7, top_p = 0.95, top_k = 100, repetition_penalty = 1.03 }
+nothink = { temperature = 0.7, top_p = 0.95, top_k = 100, repetition_penalty = 1.03 }
+
+[models."bonsai2-27b"]
+server = "mlx-vlm"
+run = "prism-ml/Ternary-Bonsai-2-27B-mlx-2bit@fcba37d2117a7077eac6b613b2668d14d9779edd"
+port = 8082
+# measured: 8.7 GiB loaded, 21.8 at a 16k-token prompt; a 28k-token prompt ran out of GPU memory on a 32 GB Mac
+memory_gb = 22
+max_kv_size = 32768
+description = "Ternary Bonsai 2 27B (Qwen3.8-27B, ternary in 2-bit). Smallest weights of the 27B-class models, but long prompts need about as much memory as the others. Text and image input"
+think = { temperature = 1.0, top_p = 0.95, top_k = 20 }
 nothink = { temperature = 0.7, top_p = 0.8, top_k = 20, presence_penalty = 1.5 }

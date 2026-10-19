@@ -2,8 +2,8 @@
 
 Run local models on an Apple Silicon Mac with [MLX](https://github.com/ml-explore/mlx), use them from Claude Code over MCP, and start or stop them from a Mac app.
 
-- **Kev** ([jaredpalmer/kev](https://github.com/jaredpalmer/kev)): decision models that return a calibrated answer, not generated text (`choose`, `yes_no`, `score`).
-- **LLM**: [Qwen3.8-27B](https://huggingface.co/mlx-community/Qwen3.8-27B-mxfp4) and the faster [Qwen3.6-35B-A3B](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-mxfp4) (4-bit mxfp4) for drafting, translating, summarizing or a second opinion.
+- **Kev** ([jaredpalmer/kev](https://github.com/jaredpalmer/kev)): decision models that return a calibrated answer, not generated text (`choose`, `yes_no`, `score`). Kev-4B and Kev-0.8B, plus two Kev-style models: [Malkuth-2B](https://huggingface.co/dhtocks/malkuth-2b), the best calibrated on Korean, and [Jev-Style-0.8B](https://huggingface.co/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-MLX), which is small and accepts states up to 25.6k tokens.
+- **LLM**: [Qwen3.8-27B](https://huggingface.co/mlx-community/Qwen3.8-27B-mxfp4), the faster [Qwen3.6-35B-A3B](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-mxfp4), [MiniCPM-V 4.7 35B-A3B](https://huggingface.co/mlx-community/MiniCPM-V-4.7-35B-A3B-mxfp4) for images, and [Ternary Bonsai 2 27B](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-mlx-2bit) with the smallest weights. Use them for drafting, translating, summarizing or a second opinion.
 
 Servers listen only on `127.0.0.1`, with no authentication.
 
@@ -19,7 +19,7 @@ uv sync --python 3.13
 HF_HUB_OFFLINE=0 .venv/bin/kevctl start kev-4b    # first start downloads Kev
 ```
 
-Memory: Kev-4B ~16 GB, Kev-0.8B ~4 GB, Qwen3.8-27B ~21 GB, Qwen3.6-35B-A3B ~22 GB.
+Measured peak memory: Kev-4B 16 GB, Kev-0.8B 3 GB, Malkuth-2B 7 GB, Jev-Style-0.8B 8 GB (long state); Qwen3.8-27B and Qwen3.6-35B-A3B 23 GB each (28k-token prompt), MiniCPM-V 25 GB and Bonsai 2 22 GB. On a 32 GB Mac, MiniCPM-V runs out of memory above an ~8k-token prompt and Bonsai above ~16k. The first MiniCPM-V request after a start takes about a minute.
 
 ## Use
 
@@ -49,7 +49,7 @@ claude mcp add llm-local --scope user -- "$PWD/.venv/bin/llm-mcp"
 
 ## Configure
 
-`kev.toml` and `llm.toml` register the models (weights, port, memory, sampling). Pin `run` to a commit; unknown keys are an error.
+`kev.toml` and `llm.toml` register the models (weights, port, memory, sampling). Pin `run` to a commit; unknown keys are an error. In `kev.toml`, `backend = "kev-http"` runs `kev.serve`, and `backend = "jev-style"` runs `local_models.kev.jev_style`, which serves the same `/v1/systemone` API with the runtime shipped in a Jev-Style MLX repository.
 
 ## Test
 
@@ -61,4 +61,4 @@ claude mcp add llm-local --scope user -- "$PWD/.venv/bin/llm-mcp"
 
 ## License
 
-MIT. Kev, its weights and the Qwen weights are Apache-2.0.
+MIT. Kev, its weights, Jev-Style, and the Qwen, MiniCPM-V and Bonsai weights are Apache-2.0. Malkuth-2B is CC BY-NC 4.0 (non-commercial only).

@@ -8,7 +8,7 @@ from .registry import load_registry
 READ_ONLY = {"readOnlyHint": True, "openWorldHint": False}
 
 mcp = FastMCP("llm-local", instructions=(
-    "A local LLM (Qwen) on this Mac. Use ask to hand it self-contained text work: drafting, rewriting, translating, "
+    "A local LLM on this Mac. Use ask to hand it self-contained text work: drafting, rewriting, translating, "
     "summarizing, or a second opinion. It sees only the prompt and system text you pass, not this conversation or any "
     "files, so include everything it needs. It is much slower than you; keep prompts focused and leave think off "
     "unless the task needs step-by-step reasoning."))
