@@ -1,11 +1,9 @@
-// Draws the LOCAL-MODELS 1024×1024 app icon to the path given as the first argument. Used by scripts/build-app.sh.
-// It is the window in miniature: two model rows, one running (green light) and one stopped.
 import AppKit
 
 let size = 1024.0
 let img = NSImage(size: NSSize(width: size, height: size))
 img.lockFocus()
-// macOS icon grid: an 824pt rounded square centred on the canvas, with a soft shadow below.
+// the macOS icon grid puts an 824pt tile on the 1024pt canvas
 let tile = NSBezierPath(roundedRect: NSRect(x: 100, y: 100, width: 824, height: 824), xRadius: 185, yRadius: 185)
 NSGraphicsContext.current?.saveGraphicsState()
 let shadow = NSShadow()

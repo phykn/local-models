@@ -1,4 +1,3 @@
-"""What kev.toml and llm.toml share: a [models."name"] table per model, the default model, and ports the app can change."""
 import re
 import tomllib
 from dataclasses import dataclass, fields
@@ -6,7 +5,7 @@ from pathlib import Path
 
 
 class RegistryError(Exception):
-    """The registry file is broken, or has no model of the name asked for."""
+    pass
 
 
 @dataclass(frozen=True)
@@ -15,7 +14,7 @@ class Registry:
     default: str
     models: dict
 
-    spec = None   # each family's ModelSpec; every key of a model's table must be one of its fields
+    spec = None
 
     @classmethod
     def load(cls, path):
@@ -30,7 +29,7 @@ class Registry:
                 raise RegistryError(f"model {name!r} in {path}: unknown keys {', '.join(sorted(unknown))}")
             try:
                 models[name] = cls.spec(name=name, **table)
-            except (TypeError, ValueError) as e:   # a required key is missing, or the spec rejects a value
+            except (TypeError, ValueError) as e:
                 raise RegistryError(f"model {name!r} in {path}: {e}") from None
         default = cfg.get("default") or next(iter(models))
         if default not in models:
@@ -38,10 +37,9 @@ class Registry:
         return cls(path, default, models)
 
     def reload(self):
-        """The file as it is now; this registry if the file cannot be read, for example while the app rewrites it."""
         try:
             return self.load(self.path)
-        except (OSError, tomllib.TOMLDecodeError, RegistryError):
+        except (OSError, tomllib.TOMLDecodeError, RegistryError):   # the app may be rewriting the file
             return self
 
     def get(self, name=None):
@@ -51,7 +49,7 @@ class Registry:
         return self.models[name]
 
     def set_port(self, name, port):
-        """Rewrite the port line of [models."name"], keeping the file's comments and layout."""
+        # edit the one line rather than re-serialize, so the file keeps its comments and layout
         if not 1024 <= port <= 65535:
             raise RegistryError(f"port must be between 1024 and 65535, not {port}")
         text = self.path.read_text()

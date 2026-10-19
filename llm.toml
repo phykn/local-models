@@ -1,5 +1,3 @@
-# run is a Hugging Face id@commit, or a local model directory relative to this file.
-# server is mlx-vlm or mlx-lm. max_kv_size is passed only to mlx-vlm.
 # memory_gb is the measured peak footprint (GiB, rounded up) while loading and answering a ~28k-token prompt; ctl warns when free memory is below it.
 # Models may share a port; only one of them can run at a time.
 

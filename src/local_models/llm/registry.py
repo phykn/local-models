@@ -26,7 +26,6 @@ class ModelSpec:
 
     @property
     def repo(self):
-        """The Hugging Face id without the revision, or None for a local directory."""
         return self.run.split("@")[0] if "@" in self.run else None
 
 
@@ -34,7 +33,6 @@ class Registry(registry.Registry):
     spec = ModelSpec
 
     def resolve(self, run):
-        """Local directory for run: a path next to llm.toml, or the id@commit snapshot in HF_HOME. None if not downloaded."""
         if "@" not in run:
             local = self.path.parent / run
             return local if local.exists() else None
@@ -50,7 +48,6 @@ class Registry(registry.Registry):
         return path if complete(path) else None
 
     def quantization(self, spec):
-        """How the downloaded weights are stored, e.g. "4-bit mxfp4"; None if not downloaded."""
         if not (path := self.resolve(spec.run)) or not (cfg := path / "config.json").exists():
             return None
         q = json.loads(cfg.read_text()).get("quantization")
@@ -58,7 +55,7 @@ class Registry(registry.Registry):
 
 
 def complete(path):
-    """True if every weight file is in path; a snapshot holding only config.json is not downloaded."""
+    # an interrupted download can leave a snapshot with config.json and no weights
     if (index := path / "model.safetensors.index.json").exists():
         return all((path / f).exists() for f in set(json.loads(index.read_text())["weight_map"].values()))
     return (path / "model.safetensors").exists()

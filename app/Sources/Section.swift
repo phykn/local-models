@@ -1,34 +1,30 @@
-// One ctl's models and its Start/Stop button. At most one of the models runs at a time. The section shows what the
-// ctl's status reports, so it also follows models started or stopped from the command line.
 import AppKit
 
 final class Section: NSView {
-    // The last action that went wrong, shown until the next action: a line under the list and, when the server itself
-    // failed, a title in the header. A refused port or a missing download leaves the header on the server's state.
+    // title is nil when the header should keep the server's state, e.g. after a refused port or a missing download
     struct Failure {
         var title: String?
         var detail: String
-        var command: String? = nil   // a command that fixes it, shown after the detail and copied by the copy button
-        var log: String? = nil       // the model whose log may say why, for Show Log
+        var command: String? = nil
+        var log: String? = nil
     }
 
-    // What the section shows, from the ctl's status and the action under way.
     private enum Phase { case loading, stopped, starting(String), running(Status), stopping(String), failed(Failure) }
 
     let project: Project
-    var onOwn: ((String, Bool) -> Void)?   // tells the app which models it started and stopped, for the watchdog
+    var onOwn: ((String, Bool) -> Void)?
     private var rows: [ModelRow] = []
     private var selectedIndex = 0
     private var statuses: [String: Status] = [:]
-    private var starter: Process?          // the running "ctl start", while this app starts a model
+    private var starter: Process?
     private var starting: String?
     private var stopping: String?
     private var failure: Failure?
-    private var info = ""                  // a passing note, e.g. a changed port
+    private var info = ""
     private var watched: String?           // a model this app started, to notice when it goes away
     private var polling = false
-    private var copied: String?            // what the copy button copies: the address, or a command
-    private var logged: String?            // the model whose log Show Log opens
+    private var copied: String?
+    private var logged: String?
 
     private let light = StatusLight()
     private let spinner = NSProgressIndicator()
@@ -102,7 +98,7 @@ final class Section: NSView {
         render()
     }
 
-    // Reads the models from the ctl; called once, off the main thread.
+    // off the main thread: runCtl blocks
     func load() {
         let (code, out, err) = runCtl(project.ctl, ["list", "--json"])
         let ms = code == 0 ? try? JSONDecoder().decode([Model].self, from: Data(out.utf8)) : nil
@@ -117,7 +113,6 @@ final class Section: NSView {
         }
     }
 
-    // Lists the models and picks the one picked last time, or else the default.
     private func show(_ ms: [Model]) {
         rows = ms.enumerated().map { i, m in
             let row = ModelRow(m, registry: "\(project.key).toml")
@@ -137,7 +132,7 @@ final class Section: NSView {
         render()
     }
 
-    // The section shows what the servers are actually doing, not just what the last command reported.
+    // follows the servers themselves, so models started or stopped from the command line show up too
     func poll() {
         guard !polling, !rows.isEmpty else { return }
         polling = true
@@ -168,13 +163,12 @@ final class Section: NSView {
 
     func render() {
         let phase = self.phase
-        var up: String?   // the model that is running or on its way up or down
+        var up: String?
         switch phase {
         case .starting(let n), .stopping(let n): up = n
         case .running(let s): up = s.name
         default: up = nil
         }
-        // the running model is also the picked one
         if let up, let i = rows.firstIndex(where: { $0.model.name == up }), i != selectedIndex {
             selectedIndex = i
             UserDefaults.standard.set(up, forKey: "model.\(project.key)")
@@ -193,7 +187,7 @@ final class Section: NSView {
 
         var title = "Stopped", color = NSColor.tertiaryLabelColor, loading = false
         var line = "", lineColor = NSColor.secondaryLabelColor
-        var code: String?   // an address or a command, set in monospace after the line
+        var code: String?
         copied = nil
         logged = nil
         switch phase {

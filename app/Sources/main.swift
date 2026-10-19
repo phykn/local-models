@@ -1,6 +1,3 @@
-// LOCAL-MODELS.app: one window to start and stop the Kev decision models and the LLMs. Each section runs one model at
-// a time and the sections are independent, so either or both can be up. Quitting the app stops the models it started,
-// and only those. Built by scripts/build-app.sh. The app knows nothing model-specific: see Ctl.swift.
 import AppKit
 
 let app = NSApplication.shared

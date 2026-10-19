@@ -2,7 +2,7 @@ import AppKit
 
 let totalGB = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
 
-// Memory macOS can hand out without swapping, counted like servers.free_gb in the ctls.
+// counted like servers.free_gb, so the app and the ctls agree on what fits
 func freeGB() -> Double {
     var stats = vm_statistics64()
     var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
@@ -14,7 +14,6 @@ func freeGB() -> Double {
     return Double(pages) * Double(vm_kernel_page_size) / 1_073_741_824
 }
 
-// The window's footer: how much of the Mac's unified memory is in use, which is what limits the models that can run.
 final class MemoryGauge: NSView {
     private let bar = Bar()
     private let value = label("", size: 12, color: .secondaryLabelColor)
@@ -48,7 +47,7 @@ final class MemoryGauge: NSView {
         setAccessibilityValue(value.stringValue)
     }
 
-    // A rounded track filled to the share in use: grey, then orange past 75% and red past 90%, when macOS starts to swap.
+    // red from 90%, about where macOS starts to swap
     private final class Bar: NSView {
         var used = 0.0 { didSet { needsDisplay = true } }
 

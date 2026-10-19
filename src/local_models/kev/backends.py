@@ -26,8 +26,6 @@ def normalize(raw, min_confidence):
 
 
 class KevHttpBackend:
-    """A running kev.serve, through its /v1/systemone API."""
-
     def __init__(self, spec, timeout=300):
         self.spec = spec
         self.url = f"http://127.0.0.1:{spec.port}"

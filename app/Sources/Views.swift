@@ -1,4 +1,3 @@
-// Small views shared by the sections. Colours are resolved when drawn, so they follow light and dark mode.
 import AppKit
 
 func label(_ s: String, size: CGFloat, weight: NSFont.Weight = .regular, color: NSColor = .labelColor) -> NSTextField {
@@ -9,6 +8,7 @@ func label(_ s: String, size: CGFloat, weight: NSFont.Weight = .regular, color: 
     return l
 }
 
+// resolved when drawn, so they follow light and dark mode
 extension NSColor {
     static let groupFill = NSColor(name: nil) { $0.isDark ? .white.withAlphaComponent(0.05) : .white.withAlphaComponent(0.7) }
     static let groupStroke = NSColor(name: nil) { $0.isDark ? .white.withAlphaComponent(0.09) : .black.withAlphaComponent(0.09) }
@@ -18,7 +18,6 @@ extension NSAppearance {
     var isDark: Bool { bestMatch(from: [.aqua, .darkAqua]) == .darkAqua }
 }
 
-// A rounded box around a list of rows, as in System Settings.
 final class GroupBox: NSView {
     private let stack = NSStackView()
 
@@ -52,7 +51,6 @@ final class GroupBox: NSView {
     }
 }
 
-// A coloured dot for a state: green while a model answers, orange while it starts or stops, red after a failure.
 final class StatusLight: NSView {
     var color = NSColor.tertiaryLabelColor { didSet { needsDisplay = true } }
     override var intrinsicContentSize: NSSize { NSSize(width: 8, height: 8) }

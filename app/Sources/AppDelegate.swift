@@ -1,8 +1,6 @@
-// The window, its sections and memory gauge, and the models this app started: a watchdog stops those once the app is
-// gone, however it ended.
 import AppKit
 
-let ownedFile = root.appendingPathComponent("logs/app-owned")   // "<ctl>\t<model>" per line; the watchdog stops these
+let ownedFile = root.appendingPathComponent("logs/app-owned")
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 100),
@@ -62,7 +60,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ] + sections.map { $0.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40) })
     }
 
-    // Keeps logs/app-owned in step with the models this app started, for the watchdog.
     func own(_ ctl: URL, _ name: String, _ on: Bool) {
         owned.removeAll { $0 == (ctl, name) }
         if on { owned.append((ctl, name)) }
@@ -70,9 +67,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         try? owned.map { "\($0.0.path)\t\($0.1)\n" }.joined().write(to: ownedFile, atomically: true, encoding: .utf8)
     }
 
-    // Stops the models this app started once its process is gone, however it ended (quit, force quit, crash).
-    // applicationWillTerminate only runs on a normal quit; this child outlives the app because macOS does not kill
-    // children when their parent dies.
+    // applicationWillTerminate runs only on a normal quit. A child process outlives the app (macOS does not kill
+    // children with their parent), so it can stop the app's models after a force quit or crash too.
     func startWatchdog() {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/sh")

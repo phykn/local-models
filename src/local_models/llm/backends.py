@@ -16,15 +16,12 @@ def strip_thinking(text):
 
 
 class OpenAIBackend:
-    """A running mlx-lm or mlx-vlm server, through its OpenAI-compatible API."""
-
     def __init__(self, spec: ModelSpec, timeout=900):
         self.spec = spec
         self.url = f"http://127.0.0.1:{spec.port}"
         self.timeout = timeout
 
     async def info(self):
-        """The served entry for this model from /v1/models, or None if the port has nothing or another model."""
         try:
             async with httpx.AsyncClient(timeout=2) as c:
                 r = await c.get(f"{self.url}/v1/models")

@@ -1,7 +1,3 @@
-"""Model servers that kevctl and llmctl run in the background, with a pid file and a log per model in logs/.
-
-list_row and status_row are the shape of `list --json` and `status --json`, which LOCAL-MODELS.app reads.
-"""
 import os
 import re
 import signal
@@ -16,8 +12,8 @@ from . import ROOT
 LOGS = ROOT / "logs"
 
 
+# list_row and status_row are the JSON that LOCAL-MODELS.app decodes; change Ctl.swift with them
 def list_row(reg, spec, note=None, missing=False):
-    # note: shown next to the name, e.g. the weights' quantization; missing: the weights are not downloaded
     return {"name": spec.name, "port": spec.port, "memory_gb": spec.memory_gb, "default": spec.name == reg.default,
             "note": note, "missing": missing}
 
@@ -27,13 +23,10 @@ def status_row(spec, info, pid, url):
 
 
 def state(info, pid):
-    """running: answering, with a pid file in this project's logs/; external: answering without one, i.e. started outside
-    this project, so stop cannot reach it; starting: pid file, not answering yet."""
     return "running" if info and pid else "external" if info else "starting" if pid else "stopped"
 
 
 def pid_of(name):
-    """The pid of the server a ctl started for name, or None; forgets a pid file whose server is gone."""
     f = LOGS / f"{name}.pid"
     if not f.exists():
         return None
@@ -51,7 +44,6 @@ def pid_of(name):
 
 
 def started_at(pid):
-    """When process pid started, as a Unix time to the second."""
     out = subprocess.run(["ps", "-o", "etime=", "-p", str(pid)], capture_output=True, text=True).stdout.strip()
     if not out:
         raise ProcessLookupError(pid)
@@ -75,7 +67,7 @@ def refuse_busy_port(reg, spec):
 
 
 def free_gb():
-    """Memory macOS can hand out without swapping; counts everything running, models of both ctls included."""
+    # what macOS can hand out without swapping
     s = subprocess.check_output(["vm_stat"], text=True)
     page = int(re.search(r"page size of (\d+)", s)[1])
     pages = sum(int(re.search(rf"{k}:\s+(\d+)", s)[1]) for k in ("Pages free", "Pages inactive", "Pages speculative", "Pages purgeable"))
@@ -83,10 +75,6 @@ def free_gb():
 
 
 def launch(spec, cmd, ready, timeout):
-    """Run cmd in its own session, logging to logs/<name>.log, and wait until ready() returns the server's info.
-
-    Exits with the end of the log if the server dies first, and with a note if it is still starting at the timeout.
-    """
     if spec.memory_gb > (free := free_gb()):
         print(f"warning: {spec.name} needs about {spec.memory_gb:.0f} GB and {free:.0f} GB is free; other apps or models may be swapped out")
     LOGS.mkdir(exist_ok=True)

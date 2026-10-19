@@ -1,6 +1,5 @@
 #!/bin/zsh
-# Build LOCAL-MODELS.app in the project root: one window to start and stop the Kev and LLM models.
-# Rebuild after moving the project; kev.toml and llm.toml are read each time the app opens.
+# The project path is baked into Info.plist, so rebuild after moving the project.
 set -euo pipefail
 root="${0:A:h:h}"
 tmp="$(mktemp -d)"

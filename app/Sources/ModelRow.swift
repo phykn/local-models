@@ -1,14 +1,11 @@
-// One model in a section: a radio to pick it, or its state while it runs; its name and note; its port, which can be
-// changed while nothing in the section runs; and the memory it needs, in orange when that is more than is free.
 import AppKit
 
 final class ModelRow: NSView, NSTextFieldDelegate {
-    // waiting: another model of the section is running or busy, so this one cannot be picked
     enum Look: Equatable { case idle(selected: Bool), running, starting, stopping, waiting }
 
     private(set) var model: Model
     var onSelect: (() -> Void)?
-    var onPort: ((Int) -> Void)?   // a new port typed into the port field
+    var onPort: ((Int) -> Void)?
     private var look = Look.idle(selected: false)
     private var editing = false { didSet { needsDisplay = true } }
 
@@ -108,7 +105,6 @@ final class ModelRow: NSView, NSTextFieldDelegate {
     }
 
     override func draw(_ r: NSRect) {
-        // the picked model, or the one running, sits on a soft highlight
         let tint: NSColor? = switch look {
             case .idle(selected: true): .controlAccentColor.withAlphaComponent(0.1)
             case .starting, .stopping: .systemOrange.withAlphaComponent(0.12)
@@ -134,7 +130,6 @@ final class ModelRow: NSView, NSTextFieldDelegate {
         onSelect?()
     }
 
-    // Return or leaving the field saves; anything that is not a number goes back to the current port.
     func controlTextDidEndEditing(_ note: Notification) {
         editing = false
         var text = port.stringValue.trimmingCharacters(in: .whitespaces)
@@ -143,7 +138,6 @@ final class ModelRow: NSView, NSTextFieldDelegate {
         if let p = Int(text), p != model.port { onPort?(p) }
     }
 
-    // Escape leaves the port as it was.
     func control(_ c: NSControl, textView: NSTextView, doCommandBy sel: Selector) -> Bool {
         guard sel == #selector(NSResponder.cancelOperation(_:)) else { return false }
         port.abortEditing()
