@@ -21,7 +21,7 @@ Servers listen only on `127.0.0.1` and have no authentication.
 | [Qwen3.8-27B](https://huggingface.co/mlx-community/Qwen3.8-27B-mxfp4) | 23 GB | Default |
 | [Qwen3.6-35B-A3B](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-mxfp4) | 23 GB | Faster (MoE) |
 | [MiniCPM-V 4.7 35B-A3B](https://huggingface.co/mlx-community/MiniCPM-V-4.7-35B-A3B-mxfp4) | 25 GB | Strong with images. Up to an ~8k-token prompt on 32 GB |
-| [Ternary Bonsai 2 27B](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-mlx-2bit) | 22 GB | Smallest weights. Up to a ~16k-token prompt on 32 GB |
+| [Gemma 4 26B-A4B](https://huggingface.co/mlx-community/gemma-4-26B-A4B-it-qat-4bit) | 21 GB | Fast (MoE), good at prose. Runs beside Kev-4B up to a ~8k-token prompt on 32 GB |
 
 Memory is the measured peak, with a long prompt for the LLMs. Each section runs one model at a time.
 
@@ -80,4 +80,4 @@ Models are registered in `kev.toml` and `llm.toml`. Each entry sets the weights,
 
 ## License
 
-This project is MIT licensed. Kev, Qwen, MiniCPM-V, and Bonsai are Apache-2.0. Malkuth-2B is CC BY-NC 4.0, which allows non-commercial use only.
+This project is MIT licensed. Kev, Qwen, MiniCPM-V, and Gemma 4 are Apache-2.0. Malkuth-2B is CC BY-NC 4.0, which allows non-commercial use only.
