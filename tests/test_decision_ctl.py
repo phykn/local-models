@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import pytest
 
 from local_models import servers
-from local_models.kev import ctl
-from local_models.kev.registry import ModelSpec, Registry, load_registry
+from local_models.decision import ctl
+from local_models.decision.registry import ModelSpec, Registry, load_registry
 
 
 def test_start_while_starting_does_not_spawn(monkeypatch, tmp_path, capsys):
@@ -77,7 +77,7 @@ def test_status_and_list_json(tmp_path, monkeypatch, capsys):
 
 
 def test_unknown_model_is_an_error_not_a_traceback(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["kevctl", "start", "nope"])
+    monkeypatch.setattr(sys, "argv", ["decisionctl", "start", "nope"])
     with pytest.raises(SystemExit, match="unknown model 'nope'; registered: "):
         ctl.main()
 
@@ -85,7 +85,7 @@ def test_unknown_model_is_an_error_not_a_traceback(monkeypatch):
 def test_start_runs_kev_serve_on_the_model_port(tmp_path, monkeypatch, capsys):
     (tmp_path / "ck").mkdir()
     (tmp_path / "ck/head.pt").touch()
-    reg = Registry(tmp_path / "kev.toml", "m", {"m": ModelSpec("m", run="ck", port=8011, memory_gb=4)})
+    reg = Registry(tmp_path / "decision.toml", "m", {"m": ModelSpec("m", run="ck", port=8011, memory_gb=4)})
     monkeypatch.setattr(servers, "LOGS", tmp_path)
     monkeypatch.setattr(servers, "port_in_use", lambda port: False)
     monkeypatch.setattr(ctl, "info_of", lambda spec: None)

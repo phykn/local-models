@@ -69,4 +69,4 @@ class KevHttpBackend:
         return run == want or run.endswith("/" + want.strip("/"))
 
     def not_running(self):
-        return f"model {self.spec.name!r} is not running on {self.url}. Start it with: kevctl start {self.spec.name}"
+        return f"model {self.spec.name!r} is not running on {self.url}. Start it with: decisionctl start {self.spec.name}"

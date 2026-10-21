@@ -1,6 +1,6 @@
 import pytest
 
-from local_models.kev.registry import load_registry as load_kev
+from local_models.decision.registry import load_registry as load_decision
 from local_models.llm.registry import load_registry as load_llm
 from local_models.registry import RegistryError
 
@@ -18,14 +18,14 @@ port = 8012
 '''
 
 
-def reg_of(tmp_path, text=TOML, load=load_kev):
+def reg_of(tmp_path, text=TOML, load=load_decision):
     path = tmp_path / "models.toml"
     path.write_text(text)
     return load(path)
 
 
 def test_project_registries_load():
-    for reg in (load_kev(), load_llm()):
+    for reg in (load_decision(), load_llm()):
         assert reg.default in reg.models
 
 
@@ -34,7 +34,7 @@ def test_set_port_rewrites_only_that_model(tmp_path):
     reg.set_port("a", 9000)
     assert reg.path.read_text() == TOML.replace("8011", "9000")
     reg.set_port("b", 9001)
-    new = load_kev(reg.path)
+    new = load_decision(reg.path)
     assert (new.get("a").port, new.get("b").port) == (9000, 9001)
 
 
@@ -42,7 +42,7 @@ def test_set_port_rejects_privileged(tmp_path):
     reg = reg_of(tmp_path)
     with pytest.raises(RegistryError, match="between 1024"):
         reg.set_port("a", 80)
-    assert load_kev(reg.path).get("a").port == 8011
+    assert load_decision(reg.path).get("a").port == 8011
 
 
 def test_set_port_leaves_the_file_alone_when_the_edit_would_change_more(tmp_path):
@@ -65,7 +65,7 @@ def test_unknown_model(tmp_path):
     ("port = 1", "missing 1 required positional argument: 'run'"),   # start would otherwise fail with a TypeError
     ('run = "x/y@v1"', "missing 1 required positional argument: 'port'"),   # the app and kev.serve need one
 ])
-def test_kev_registry_rejects_bad_tables(tmp_path, table, error):
+def test_decision_registry_rejects_bad_tables(tmp_path, table, error):
     with pytest.raises(RegistryError, match=error):
         reg_of(tmp_path, f"[models.m]\n{table}\n")
 

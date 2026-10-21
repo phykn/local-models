@@ -34,7 +34,7 @@ git clone https://github.com/phykn/local-models.git && cd local-models
 git clone https://github.com/jaredpalmer/kev.git vendor/kev && git -C vendor/kev checkout kev-1.0
 uv sync --python 3.13
 .venv/bin/llmctl pull qwen3.8-27b                 # weights go to weight/
-HF_HUB_OFFLINE=0 .venv/bin/kevctl start kev-4b    # the first start downloads the model
+HF_HUB_OFFLINE=0 .venv/bin/decisionctl start kev-4b    # the first start downloads the model
 ```
 
 ## Use
@@ -45,20 +45,20 @@ HF_HUB_OFFLINE=0 .venv/bin/kevctl start kev-4b    # the first start downloads th
 scripts/build-app.sh && open LOCAL-MODELS.app
 ```
 
-**Claude Code**: register the MCP servers, then ask something like "Use kev to decide whether this ticket is urgent".
+**Claude Code**: register the MCP servers, then ask something like "Use decision to decide whether this ticket is urgent".
 
 ```bash
-claude mcp add kev --scope user -- "$PWD/.venv/bin/kev-mcp"
+claude mcp add decision --scope user -- "$PWD/.venv/bin/decision-mcp"
 claude mcp add llm-local --scope user -- "$PWD/.venv/bin/llm-mcp"
 ```
 
-- `kev` provides `choose`, `yes_no`, `score`, `decide`, and `list_models`. Check answers marked `low_confidence` yourself.
+- `decision` provides `choose`, `yes_no`, `score`, `decide`, and `list_models`. Check answers marked `low_confidence` yourself.
 - `llm-local` provides `ask` and `list_models`. Pass `think: true` to `ask` for harder problems.
 
-**Command line**: `kevctl` and `llmctl` take the same commands: `start`, `stop`, `status`, `list`, and `port`.
+**Command line**: `decisionctl` and `llmctl` take the same commands: `start`, `stop`, `status`, `list`, and `port`.
 
 ```bash
-.venv/bin/kevctl start kev-4b
+.venv/bin/decisionctl start kev-4b
 ```
 
 **HTTP**
@@ -68,7 +68,7 @@ claude mcp add llm-local --scope user -- "$PWD/.venv/bin/llm-mcp"
 
 ## Configure
 
-Models are registered in `kev.toml` and `llm.toml`. Each entry sets the weights, port, memory, and sampling. Pin `run` to a commit. Unknown keys are an error.
+Models are registered in `decision.toml` and `llm.toml`. Each entry sets the weights, port, memory, and sampling. Pin `run` to a commit. Unknown keys are an error.
 
 ## Test
 

@@ -52,10 +52,10 @@ def start(reg, a):
     run = reg.resolve(spec)
     if "@" not in run and not (reg.path.parent / run).exists():
         # a missing local path like checkpoints/x also matches the Hub id pattern, and kev.serve would try to download it
-        sys.exit(f"{reg.path.parent / run} does not exist; a Hub model needs id@revision in kev.toml")
+        sys.exit(f"{reg.path.parent / run} does not exist; a Hub model needs id@revision in decision.toml")
     if not is_hub_id(run) and not Path(run, "head.pt").exists():
         # kev.serve silently falls back to runs/smoke when --run has no head.pt
-        sys.exit(f"{run} has no head.pt; is the checkpoint path in kev.toml right?")
+        sys.exit(f"{run} has no head.pt; is the checkpoint path in decision.toml right?")
     cmd = [sys.executable, "-m", "kev.serve", "--run", run, "--port", str(spec.port)]
     info = servers.launch(spec, cmd, lambda: info_of(spec), a.timeout)
     print(f"{spec.name} ready on :{spec.port} ({info['backend']} {info['dtype']})")
@@ -78,12 +78,12 @@ def merge(reg, a):
     out = ROOT / "checkpoints" / f"{spec.name}-merged"
     cmd = [sys.executable, "scripts/merge_lora_checkpoint.py", "--lora", reg.resolve(spec), "--out", str(out), "--weights_dtype", "bf16"]
     subprocess.run(cmd, cwd=KEV_SRC, check=True)   # the script imports scripts.interpolate_checkpoint from the kev checkout
-    print(f"merged into {out / 'checkpoint'}; set run = \"{(out / 'checkpoint').relative_to(ROOT)}\" in kev.toml to use it")
+    print(f"merged into {out / 'checkpoint'}; set run = \"{(out / 'checkpoint').relative_to(ROOT)}\" in decision.toml to use it")
 
 
 def main():
-    ap = argparse.ArgumentParser(prog="kevctl")
-    ap.add_argument("--registry", help="kev.toml (default: KEV_MCP_REGISTRY or the project's)")
+    ap = argparse.ArgumentParser(prog="decisionctl")
+    ap.add_argument("--registry", help="decision.toml (default: DECISION_MCP_REGISTRY or the project's)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("list"); p.add_argument("--json", action="store_true"); p.set_defaults(fn=models)
     p = sub.add_parser("status"); p.add_argument("--json", action="store_true"); p.set_defaults(fn=status)

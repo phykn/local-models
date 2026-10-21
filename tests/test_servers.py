@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from local_models import servers
-from local_models.kev.registry import ModelSpec, Registry
+from local_models.decision.registry import ModelSpec, Registry
 
 
 @pytest.fixture(autouse=True)

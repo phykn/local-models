@@ -7,8 +7,8 @@ from datetime import date
 from pathlib import Path
 
 from local_models import ROOT
-from local_models.kev.backends import KevHttpBackend
-from local_models.kev.registry import load_registry
+from local_models.decision.backends import KevHttpBackend
+from local_models.decision.registry import load_registry
 
 ERROR_BUDGET = 0.05
 
@@ -63,7 +63,7 @@ def summarize(rows, latencies):
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
-    ap.add_argument("--models", help="comma-separated names from kev.toml (default: every running one)")
+    ap.add_argument("--models", help="comma-separated names from decision.toml (default: every running one)")
     ap.add_argument("--out", default=str(ROOT / "evals" / "results"))
     a = ap.parse_args()
     reg = load_registry()
@@ -75,7 +75,7 @@ async def main():
     else:
         specs = [s for s in reg.models.values() if await KevHttpBackend(s).info()]
     if not specs:
-        sys.exit("no model running; start one with: kevctl start <name>")
+        sys.exit("no model running; start one with: decisionctl start <name>")
     Path(a.out).mkdir(parents=True, exist_ok=True)
     print(f"{'model':<14} {'n':>4} {'acc':>6} {'brier':>6} {'ms':>6} {'cov@5%':>7} {'thr':>5}  by type")
     for spec in specs:

@@ -2,9 +2,9 @@ import pytest
 from fastapi import FastAPI
 from fastmcp import Client
 
-from local_models.kev import mcp_server
-from local_models.kev.backends import BackendError, KevHttpBackend, normalize
-from local_models.kev.registry import ModelSpec, Registry, load_registry
+from local_models.decision import mcp_server
+from local_models.decision.backends import BackendError, KevHttpBackend, normalize
+from local_models.decision.registry import ModelSpec, Registry, load_registry
 
 CANNED = {
     "choice": {"type": "choice", "choice": "returns", "confidence": 0.21,
@@ -88,7 +88,7 @@ async def test_errors(client):
         unknown = await c.call_tool("yes_no", {"text": "t", "question": "q", "model": "nope"}, raise_on_error=False)
         long = await c.call_tool("yes_no", {"text": "too long", "question": "q"}, raise_on_error=False)
         boom = await c.call_tool("yes_no", {"text": "boom", "question": "q"}, raise_on_error=False)
-    assert down.is_error and "kevctl start down" in down.content[0].text
+    assert down.is_error and "decisionctl start down" in down.content[0].text
     assert unknown.is_error and "unknown model 'nope'" in unknown.content[0].text
     assert long.is_error and "65,536" in long.content[0].text
     assert boom.is_error and "answered HTTP 500" in boom.content[0].text
@@ -114,7 +114,7 @@ async def test_list_models(client):
     async with client as c:
         r = await c.call_tool("list_models", {})
     by = {m["name"]: m for m in r.data["models"]}
-    assert by["fake"]["running"] and by["fake"]["default"] and by["down"]["start"] == "kevctl start down"
+    assert by["fake"]["running"] and by["fake"]["default"] and by["down"]["start"] == "decisionctl start down"
 
 
 async def test_other_server_on_the_port_is_not_kev(serve):

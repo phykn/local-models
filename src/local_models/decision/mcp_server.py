@@ -9,8 +9,8 @@ READ_ONLY = {"readOnlyHint": True, "openWorldHint": False}
 LOW_CONFIDENCE_NOTE = ("Every answer carries probabilities and a confidence in [0, 1]. When low_confidence is true, do not act on "
                        "the answer alone: check it yourself or ask the user.")
 
-mcp = FastMCP("kev", instructions=(
-    "Local Kev decision models: fast, calibrated classification of a text without generating any. Use choose for one of "
+mcp = FastMCP("decision", instructions=(
+    "Local decision models (Kev format): fast, calibrated classification of a text without generating any. Use choose for one of "
     "several options, yes_no for a yes/no judgement, score for a level on an ordered scale, decide for several questions "
     "about the same text in one call. The model reads only the text and the question you pass, so put everything it "
     "needs into them. " + LOW_CONFIDENCE_NOTE))
@@ -20,7 +20,7 @@ reg = load_registry()
 
 def registry():
     global reg
-    reg = reg.reload()   # LOCAL-MODELS.app can change a port in kev.toml while this server runs
+    reg = reg.reload()   # LOCAL-MODELS.app can change a port in decision.toml while this server runs
     return reg
 
 
@@ -45,7 +45,7 @@ async def list_models() -> dict:
         info = await KevHttpBackend(spec).info()
         models.append({"name": spec.name, "description": spec.description, "default": spec.name == reg.default,
                        "running": info is not None, "min_confidence": spec.min_confidence,
-                       **({"serving": info} if info else {"start": f"kevctl start {spec.name}"})})
+                       **({"serving": info} if info else {"start": f"decisionctl start {spec.name}"})})
     return {"models": models}
 
 

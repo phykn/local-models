@@ -11,7 +11,7 @@ struct Project {
 }
 
 let projects = [
-    Project(key: "kev", title: "Kev", subtitle: "Decision models", ctl: root.appendingPathComponent(".venv/bin/kevctl")),
+    Project(key: "decision", title: "Decision", subtitle: "Kev, Malkuth", ctl: root.appendingPathComponent(".venv/bin/decisionctl")),
     Project(key: "llm", title: "LLM", subtitle: "Qwen, MiniCPM-V, Gemma", ctl: root.appendingPathComponent(".venv/bin/llmctl")),
 ]
 
