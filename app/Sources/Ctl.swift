@@ -6,13 +6,12 @@ let root = URL(fileURLWithPath: Bundle.main.infoDictionary?["ProjectRoot"] as? S
 struct Project {
     let key: String
     let title: String
-    let subtitle: String
     let ctl: URL
 }
 
 let projects = [
-    Project(key: "decision", title: "Decision", subtitle: "Kev, Malkuth", ctl: root.appendingPathComponent(".venv/bin/decisionctl")),
-    Project(key: "llm", title: "LLM", subtitle: "Qwen, MiniCPM-V, Gemma", ctl: root.appendingPathComponent(".venv/bin/llmctl")),
+    Project(key: "decision", title: "Decision", ctl: root.appendingPathComponent(".venv/bin/decisionctl")),
+    Project(key: "llm", title: "LLM", ctl: root.appendingPathComponent(".venv/bin/llmctl")),
 ]
 
 // decodes servers.list_row and servers.status_row

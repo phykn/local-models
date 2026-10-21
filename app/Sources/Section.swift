@@ -48,17 +48,13 @@ final class Section: NSView {
 
     private func build() {
         let title = label(project.title, size: 15, weight: .semibold)
-        let subtitle = label(project.subtitle, size: 13, color: .secondaryLabelColor)
-        let name = NSStackView(views: [title, subtitle])
-        name.alignment = .firstBaseline
-        name.spacing = 7
         spinner.style = .spinning
         spinner.controlSize = .small
         spinner.isDisplayedWhenStopped = false
         button.bezelStyle = .push
         button.target = self
         button.action = #selector(toggle)
-        let head = NSStackView(views: [name, NSView(), spinner, light, state, button])
+        let head = NSStackView(views: [title, NSView(), spinner, light, state, button])
         head.spacing = 8
         head.setCustomSpacing(6, after: light)
         head.setCustomSpacing(12, after: state)
