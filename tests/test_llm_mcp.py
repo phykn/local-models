@@ -1,9 +1,4 @@
-import socket
-import threading
-import time
-
 import pytest
-import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastmcp import Client
 
@@ -36,33 +31,21 @@ def fake_server(models):
     return app
 
 
-def serve(app):
-    s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
-    srv = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
-    threading.Thread(target=srv.run, daemon=True).start()
-    while not srv.started: time.sleep(0.05)
-    return port, srv
-
-
 def spec(server, port, name="m"):
     return ModelSpec(name, server, f"{REPO}@abc", port, nothink={"temperature": 0.7}, think={"temperature": 1.0})
 
 
 @pytest.fixture(scope="module")
-def vlm():
+def vlm(serve):
     # mlx-vlm lists HF cache repos (not loaded) and the loaded model by its snapshot path
     app = fake_server([{"id": REPO, "loaded": False}, {"id": SNAPSHOT, "loaded": True}])
-    port, srv = serve(app)
-    yield port, app
-    srv.should_exit = True
+    return serve(app), app
 
 
 @pytest.fixture(scope="module")
-def lm():
+def lm(serve):
     app = fake_server([{"id": REPO, "object": "model"}])   # mlx-lm: cache repos only, no loaded flag
-    port, srv = serve(app)
-    yield port, app
-    srv.should_exit = True
+    return serve(app), app
 
 
 @pytest.fixture
@@ -123,12 +106,9 @@ async def test_list_models(client):
     assert by["m"]["running"] and by["m"]["default"] and by["down"]["start"] == "llmctl start down"
 
 
-async def test_other_model_on_the_port_is_not_running():
-    port, srv = serve(fake_server([{"id": "mlx-community/Other-7B-4bit", "loaded": True}, {"id": REPO, "loaded": False}]))
-    try:
-        assert await OpenAIBackend(spec("mlx-vlm", port)).info() is None
-    finally:
-        srv.should_exit = True
+async def test_other_model_on_the_port_is_not_running(serve):
+    port = serve(fake_server([{"id": "mlx-community/Other-7B-4bit", "loaded": True}, {"id": REPO, "loaded": False}]))
+    assert await OpenAIBackend(spec("mlx-vlm", port)).info() is None
 
 
 async def test_lm_info_matches_cache_repo(lm):

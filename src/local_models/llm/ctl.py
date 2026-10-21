@@ -28,22 +28,22 @@ def command(spec, model):
 
 
 def models(reg, a):
-    rows = []
+    rows, w = [], max(map(len, reg.models))
     for s in reg.models.values():
         quant = reg.quantization(s)
         rows.append(servers.list_row(reg, s, note=quant or "not downloaded", missing=quant is None))
-    print(json.dumps(rows) if a.json else "\n".join(f"{r['name']:<16} :{r['port']}  {r['memory_gb']:.0f} GB  {r['note']}" for r in rows))
+    print(json.dumps(rows) if a.json else "\n".join(f"{r['name']:<{w}} :{r['port']}  {r['memory_gb']:.0f} GB  {r['note']}" for r in rows))
 
 
 def status(reg, a):
-    rows = []
+    rows, w = [], max(map(len, reg.models))
     for spec in reg.models.values():
         info, pid = info_of(spec), servers.pid_of(spec.name)
         rows.append(servers.status_row(spec, info, pid, f"http://127.0.0.1:{spec.port}/v1"))
         if not a.json:
             default = " (default)" if spec.name == reg.default else ""
             quant = reg.quantization(spec) or "not downloaded"
-            print(f"{spec.name:<16} {rows[-1]['state']:<9} :{spec.port}  pid={pid or '-':<7} {quant:<14} {spec.server}  {spec.run}{default}")
+            print(f"{spec.name:<{w}} {rows[-1]['state']:<9} :{spec.port}  pid={pid or '-':<7} {quant:<14} {spec.server}  {spec.run}{default}")
     if a.json:
         print(json.dumps(rows))
 
@@ -68,7 +68,7 @@ def start(reg, a):
     if info_of(spec):
         sys.exit(f"another process is already serving {spec.name} on :{spec.port}")
     servers.refuse_busy_port(reg, spec)
-    if not (model := reg.resolve(spec.run)):
+    if not (model := reg.resolve(spec)):
         sys.exit(f"{spec.name} is not downloaded; run: llmctl pull {spec.name}")
     deadline = time.time() + a.timeout
     servers.launch(spec, command(spec, model), lambda: info_of(spec), a.timeout)

@@ -4,7 +4,6 @@
 default = "kev-4b"
 
 [models."kev-4b"]
-backend = "kev-http"
 run = "jaredpalmer/kev-4b@v1.0"
 port = 8081
 memory_gb = 16
@@ -12,7 +11,6 @@ min_confidence = 0.5
 description = "Kev-4B (Qwen3.5-4B-Base + LoRA). The default model"
 
 [models."kev-0.8b"]
-backend = "kev-http"
 run = "jaredpalmer/kev-0.8b@v1.0"
 port = 8081
 memory_gb = 3
@@ -20,7 +18,6 @@ min_confidence = 0.5
 description = "Kev-0.8B. Faster, less accurate"
 
 [models."malkuth-2b"]
-backend = "kev-http"
 run = "dhtocks/malkuth-2b@37ae1672eebcf9ee5417418bd0be49f2e53d9087"
 port = 8081
 memory_gb = 7

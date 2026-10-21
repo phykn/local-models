@@ -1,9 +1,6 @@
-import time
 from pathlib import Path
 
 import httpx
-
-from .registry import ModelSpec
 
 
 class BackendError(Exception):
@@ -16,7 +13,7 @@ def strip_thinking(text):
 
 
 class OpenAIBackend:
-    def __init__(self, spec: ModelSpec, timeout=900):
+    def __init__(self, spec, timeout=900):
         self.spec = spec
         self.url = f"http://127.0.0.1:{spec.port}"
         self.timeout = timeout
@@ -51,7 +48,6 @@ class OpenAIBackend:
             if not (info := await self.info()):
                 raise BackendError(self.not_running())
             body["model"] = info["id"]
-        t0 = time.perf_counter()
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as c:
                 r = await c.post(f"{self.url}/v1/chat/completions", json=body)
@@ -64,8 +60,7 @@ class OpenAIBackend:
         d = r.json()
         choice = d["choices"][0]
         return {"model": s.name, "text": strip_thinking(choice["message"].get("content") or ""),
-                "finish_reason": choice.get("finish_reason"), "usage": d.get("usage"),
-                "roundtrip_ms": round((time.perf_counter() - t0) * 1000)}
+                "finish_reason": choice.get("finish_reason"), "usage": d.get("usage")}
 
     def not_running(self):
         return f"model {self.spec.name!r} is not running on {self.url}. Start it with: llmctl start {self.spec.name}"

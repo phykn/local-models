@@ -1,9 +1,4 @@
-import socket
-import threading
-import time
-
 import pytest
-import uvicorn
 from fastapi import FastAPI
 from fastmcp import Client
 
@@ -41,19 +36,17 @@ def fake_kev():
 
 
 @pytest.fixture(scope="module")
-def fake_port():
+def fake_port(serve):
     app = fake_kev()
-    port, srv = serve(app)
-    yield port, app
-    srv.should_exit = True
+    return serve(app), app
 
 
 @pytest.fixture
 def client(fake_port, monkeypatch, tmp_path):
     port, _ = fake_port
     reg = Registry(tmp_path / "models.toml", "fake", {
-        "fake": ModelSpec("fake", "kev-http", run="fake", port=port, min_confidence=0.3),
-        "down": ModelSpec("down", "kev-http", port=1),
+        "fake": ModelSpec("fake", run="fake", port=port, min_confidence=0.3),
+        "down": ModelSpec("down", run="down", port=1),
     })
     monkeypatch.setattr(mcp_server, "reg", reg)
     return Client(mcp_server.mcp)
@@ -103,7 +96,7 @@ async def test_errors(client):
 
 async def test_port_change_while_running(fake_port, monkeypatch, tmp_path):
     path = tmp_path / "models.toml"
-    path.write_text('[models.m]\nbackend = "kev-http"\nport = 1\n')
+    path.write_text('[models.m]\nrun = "fake"\nport = 1\n')
     monkeypatch.setattr(mcp_server, "reg", load_registry(path))
     async with Client(mcp_server.mcp) as c:
         down = await c.call_tool("yes_no", {"text": "t", "question": "q"}, raise_on_error=False)
@@ -114,7 +107,7 @@ async def test_port_change_while_running(fake_port, monkeypatch, tmp_path):
 
 def test_api_key_from_environment(monkeypatch):
     monkeypatch.setenv("KEV_API_KEY", "secret")
-    assert KevHttpBackend(ModelSpec("m", "kev-http", port=1)).headers == {"authorization": "Bearer secret"}
+    assert KevHttpBackend(ModelSpec("m", run="m", port=1)).headers == {"authorization": "Bearer secret"}
 
 
 async def test_list_models(client):
@@ -124,30 +117,18 @@ async def test_list_models(client):
     assert by["fake"]["running"] and by["fake"]["default"] and by["down"]["start"] == "kevctl start down"
 
 
-def serve(app):
-    s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
-    srv = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
-    threading.Thread(target=srv.run, daemon=True).start()
-    while not srv.started: time.sleep(0.05)
-    return port, srv
-
-
-async def test_other_server_on_the_port_is_not_kev():
+async def test_other_server_on_the_port_is_not_kev(serve):
     app = FastAPI()
     app.get("/v1/models")(lambda: {"object": "list", "data": [{"id": "some-llm"}]})   # an OpenAI-style server
-    port, srv = serve(app)
-    try:
-        assert await KevHttpBackend(ModelSpec("m", "kev-http", port=port)).info() is None
-    finally:
-        srv.should_exit = True
+    assert await KevHttpBackend(ModelSpec("m", run="m", port=serve(app))).info() is None
 
 
 async def test_another_model_on_a_shared_port(fake_port):
-    other = KevHttpBackend(ModelSpec("other", "kev-http", run="jaredpalmer/kev-0.8b@v1.0", port=fake_port[0]))
+    other = KevHttpBackend(ModelSpec("other", run="jaredpalmer/kev-0.8b@v1.0", port=fake_port[0]))
     assert await other.info() is None
     with pytest.raises(BackendError, match="'other' is not running"):
         await other.decide("t", {"q": {"type": "noul", "instructions": "q"}})
-    local = KevHttpBackend(ModelSpec("local", "kev-http", run="checkpoints/fake", port=fake_port[0]))
+    local = KevHttpBackend(ModelSpec("local", run="checkpoints/fake", port=fake_port[0]))
     assert local.serves("/Users/me/local-models/checkpoints/fake") and not local.serves("/x/other-fake")
 
 

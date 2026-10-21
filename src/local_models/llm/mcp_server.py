@@ -48,10 +48,9 @@ async def ask(prompt: str, system: str | None = None, model: str | None = None, 
     """
     messages = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt}]
     try:
-        out = await OpenAIBackend(registry().get(model)).chat(messages, think=think, max_tokens=max_tokens)
+        return await OpenAIBackend(registry().get(model)).chat(messages, think=think, max_tokens=max_tokens)
     except (RegistryError, BackendError) as e:
         raise ToolError(str(e))
-    return {k: out[k] for k in ("model", "text", "finish_reason", "usage")}
 
 
 def main():

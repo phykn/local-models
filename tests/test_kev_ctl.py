@@ -15,14 +15,14 @@ def test_start_while_starting_does_not_spawn(monkeypatch, tmp_path, capsys):
     (tmp_path / "m.pid").write_text(str(os.getpid()))
     monkeypatch.setattr(ctl, "info_of", lambda spec: None)
     monkeypatch.setattr(servers, "launch", lambda *a, **k: pytest.fail("spawned"))
-    reg = Registry(tmp_path / "models.toml", "m", {"m": ModelSpec("m", "kev-http", run="x/y", port=1)})
+    reg = Registry(tmp_path / "models.toml", "m", {"m": ModelSpec("m", run="x/y", port=1)})
     ctl.start(reg, SimpleNamespace(name="m", timeout=1))
     assert "still starting" in capsys.readouterr().out
     assert (tmp_path / "m.pid").read_text() == str(os.getpid())
 
 
 def test_start_with_missing_local_checkpoint(tmp_path):
-    reg = Registry(tmp_path / "models.toml", "m", {"m": ModelSpec("m", "kev-http", run="checkpoints/ko-4b", port=1)})
+    reg = Registry(tmp_path / "models.toml", "m", {"m": ModelSpec("m", run="checkpoints/ko-4b", port=1)})
     with pytest.raises(SystemExit, match="does not exist"):
         ctl.start(reg, SimpleNamespace(name="m", timeout=1))
 
@@ -38,19 +38,19 @@ def port_reg(tmp_path, monkeypatch, text):
 TOML = '''default = "a"
 
 [models."a"]
-backend = "kev-http"
+run = "x/a@v1"
 port = 8011   # keep this comment
 memory_gb = 16
 
 [models.b]
-backend = "kev-http"
+run = "x/b@v1"
 memory_gb = 4
 port = 8012
 '''
 
 
 def test_start_on_a_port_another_model_holds(tmp_path, monkeypatch):
-    reg = port_reg(tmp_path, monkeypatch, TOML.replace("port = 8012", 'port = 8011\nrun = "x/y@v1"'))
+    reg = port_reg(tmp_path, monkeypatch, TOML.replace("port = 8012", "port = 8011"))
     (tmp_path / "a.pid").write_text(str(os.getpid()))
     monkeypatch.setattr(servers, "port_in_use", lambda port: port == 8011)
     monkeypatch.setattr(servers, "launch", lambda *a, **k: pytest.fail("spawned"))
@@ -85,7 +85,7 @@ def test_unknown_model_is_an_error_not_a_traceback(monkeypatch):
 def test_start_runs_kev_serve_on_the_model_port(tmp_path, monkeypatch, capsys):
     (tmp_path / "ck").mkdir()
     (tmp_path / "ck/head.pt").touch()
-    reg = Registry(tmp_path / "kev.toml", "m", {"m": ModelSpec("m", "kev-http", run="ck", port=8011, memory_gb=4)})
+    reg = Registry(tmp_path / "kev.toml", "m", {"m": ModelSpec("m", run="ck", port=8011, memory_gb=4)})
     monkeypatch.setattr(servers, "LOGS", tmp_path)
     monkeypatch.setattr(servers, "port_in_use", lambda port: False)
     monkeypatch.setattr(ctl, "info_of", lambda spec: None)

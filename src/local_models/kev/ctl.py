@@ -20,18 +20,19 @@ def info_of(spec):
 
 def models(reg, a):
     rows = [servers.list_row(reg, s) for s in reg.models.values()]
-    print(json.dumps(rows) if a.json else "\n".join(f"{r['name']:<14} :{r['port']}  {r['memory_gb']:.0f} GB" for r in rows))
+    w = max(map(len, reg.models))
+    print(json.dumps(rows) if a.json else "\n".join(f"{r['name']:<{w}} :{r['port']}  {r['memory_gb']:.0f} GB" for r in rows))
 
 
 def status(reg, a):
-    rows = []
+    rows, w = [], max(map(len, reg.models))
     for spec in reg.models.values():
         info, pid = info_of(spec), servers.pid_of(spec.name)
         rows.append(servers.status_row(spec, info, pid, f"http://127.0.0.1:{spec.port}"))
         if not a.json:
             detail = f"{info['backend']} {info['dtype']}" if info else ""
             default = " (default)" if spec.name == reg.default else ""
-            print(f"{spec.name:<14} {rows[-1]['state']:<9} :{spec.port}  pid={pid or '-':<7} {detail}  {spec.run}{default}")
+            print(f"{spec.name:<{w}} {rows[-1]['state']:<9} :{spec.port}  pid={pid or '-':<7} {detail}  {spec.run}{default}")
     if a.json:
         print(json.dumps(rows))
 
@@ -48,7 +49,7 @@ def start(reg, a):
     servers.refuse_busy_port(reg, spec)
     from kev.checkpoint import is_hub_id   # imports torch; only start needs it
 
-    run = reg.resolve_run(spec)
+    run = reg.resolve(spec)
     if "@" not in run and not (reg.path.parent / run).exists():
         # a missing local path like checkpoints/x also matches the Hub id pattern, and kev.serve would try to download it
         sys.exit(f"{reg.path.parent / run} does not exist; a Hub model needs id@revision in kev.toml")
@@ -75,7 +76,7 @@ def port(reg, a):
 def merge(reg, a):
     spec = reg.get(a.name)
     out = ROOT / "checkpoints" / f"{spec.name}-merged"
-    cmd = [sys.executable, "scripts/merge_lora_checkpoint.py", "--lora", reg.resolve_run(spec), "--out", str(out), "--weights_dtype", "bf16"]
+    cmd = [sys.executable, "scripts/merge_lora_checkpoint.py", "--lora", reg.resolve(spec), "--out", str(out), "--weights_dtype", "bf16"]
     subprocess.run(cmd, cwd=KEV_SRC, check=True)   # the script imports scripts.interpolate_checkpoint from the kev checkout
     print(f"merged into {out / 'checkpoint'}; set run = \"{(out / 'checkpoint').relative_to(ROOT)}\" in kev.toml to use it")
 

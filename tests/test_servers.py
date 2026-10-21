@@ -43,7 +43,7 @@ def test_state():
 
 
 def test_busy_port_names_the_model_holding_it(tmp_path, monkeypatch):
-    reg = Registry(tmp_path / "models.toml", "a", {n: ModelSpec(n, "kev-http", port=8011) for n in "ab"})
+    reg = Registry(tmp_path / "models.toml", "a", {n: ModelSpec(n, run=n, port=8011) for n in "ab"})
     (tmp_path / "a.pid").write_text(str(os.getpid()))
     monkeypatch.setattr(servers, "port_in_use", lambda port: True)
     with pytest.raises(SystemExit, match="port 8011 is in use by a; stop it first"):

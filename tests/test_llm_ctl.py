@@ -105,3 +105,11 @@ def test_unknown_model_is_an_error_not_a_traceback(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["llmctl", "stop", "nope"])
     with pytest.raises(SystemExit, match="unknown model 'nope'; registered: "):
         ctl.main()
+
+
+def test_list_aligns_long_names(tmp_path, monkeypatch, capsys):
+    path = port_reg(tmp_path, monkeypatch, TOML.replace("models.b", 'models."a-much-longer-name"').replace("memory_gb = 22", "memory_gb = 22\nport = 8082"))
+    monkeypatch.setattr(Registry, "quantization", lambda self, spec: "4-bit")
+    ctl.models(load_registry(path), SimpleNamespace(json=False))
+    lines = capsys.readouterr().out.splitlines()
+    assert len({line.index(":") for line in lines}) == 1

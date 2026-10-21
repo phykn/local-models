@@ -1,5 +1,4 @@
 import os
-import time
 
 import httpx
 
@@ -35,7 +34,6 @@ class KevHttpBackend:
 
     async def decide(self, state, questions):
         body = {"state": state, "model": "kev-latest", "questions": questions}
-        t0 = time.perf_counter()
         if await self.info() is None:   # models can share a port, so the server there may be another model
             raise BackendError(self.not_running())
         try:
@@ -51,8 +49,7 @@ class KevHttpBackend:
             raise BackendError(f"model {self.spec.name!r} answered HTTP {r.status_code}: {r.text[:300]}")
         d = r.json()
         answers = {qid: normalize(a, self.spec.min_confidence) for qid, a in d["answers"].items()}
-        return {"model": self.spec.name, "answers": answers, "latency_ms": d.get("latency_ms"),
-                "roundtrip_ms": round((time.perf_counter() - t0) * 1000)}
+        return {"model": self.spec.name, "answers": answers, "latency_ms": d.get("latency_ms")}
 
     async def info(self):
         try:
@@ -69,7 +66,7 @@ class KevHttpBackend:
     def serves(self, run):
         # kev.serve reports the --run it got: the id as written, or a local checkpoint as an absolute path
         want = self.spec.run
-        return want is None or run == want or run.endswith("/" + want.strip("/"))
+        return run == want or run.endswith("/" + want.strip("/"))
 
     def not_running(self):
         return f"model {self.spec.name!r} is not running on {self.url}. Start it with: kevctl start {self.spec.name}"

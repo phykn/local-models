@@ -96,8 +96,7 @@ async def decide(text: str, questions: dict[str, dict], model: str | None = None
     model: a name from list_models; omit for the default.
     When low_confidence is true, do not act on the answer alone: check it yourself or ask the user.
     """
-    out = await ask(model, text, questions)
-    return {k: out[k] for k in ("model", "answers", "latency_ms")}
+    return await ask(model, text, questions)
 
 
 def main():

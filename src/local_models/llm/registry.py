@@ -32,7 +32,9 @@ class ModelSpec:
 class Registry(registry.Registry):
     spec = ModelSpec
 
-    def resolve(self, run):
+    def resolve(self, spec):
+        """the weights directory the server loads, or None when they are not downloaded"""
+        run = spec.run
         if "@" not in run:
             local = self.path.parent / run
             return local if local.exists() else None
@@ -48,7 +50,7 @@ class Registry(registry.Registry):
         return path if complete(path) else None
 
     def quantization(self, spec):
-        if not (path := self.resolve(spec.run)) or not (cfg := path / "config.json").exists():
+        if not (path := self.resolve(spec)) or not (cfg := path / "config.json").exists():
             return None
         q = json.loads(cfg.read_text()).get("quantization")
         return f"{q['bits']}-bit {q.get('mode', 'affine')}" if q else "unquantized"

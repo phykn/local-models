@@ -7,12 +7,12 @@ from local_models.registry import RegistryError
 TOML = '''default = "a"
 
 [models."a"]
-backend = "kev-http"
+run = "x/a@v1"
 port = 8011   # keep this comment
 memory_gb = 16
 
 [models.b]
-backend = "kev-http"
+run = "x/b@v1"
 memory_gb = 4
 port = 8012
 '''
@@ -61,10 +61,9 @@ def test_unknown_model(tmp_path):
 
 
 @pytest.mark.parametrize("table, error", [
-    ('backend = "kev-http"\nmemory_gbb = 4', "unknown keys memory_gbb"),   # a typo must not silently become memory_gb = 0
-    ('backend = "other"\nport = 1', "backend must be kev-http, not 'other'"),
-    ("port = 1", "missing 1 required positional argument: 'backend'"),
-    ('backend = "kev-http"', "missing 1 required positional argument: 'port'"),   # the app and kev.serve need one
+    ('run = "x/y@v1"\nport = 1\nmemory_gbb = 4', "unknown keys memory_gbb"),   # a typo must not silently become memory_gb = 0
+    ("port = 1", "missing 1 required positional argument: 'run'"),   # start would otherwise fail with a TypeError
+    ('run = "x/y@v1"', "missing 1 required positional argument: 'port'"),   # the app and kev.serve need one
 ])
 def test_kev_registry_rejects_bad_tables(tmp_path, table, error):
     with pytest.raises(RegistryError, match=error):
