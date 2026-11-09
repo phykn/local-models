@@ -10,6 +10,8 @@ dependencies = [
     "mlx-vlm==0.7.10",
     "fastmcp>=4.1",
     "httpx>=0.28",
+    "torchvision>=0.29",   # Qwen3.5 image processor (pplx-decider)
+    "einops>=0.8",         # Kanana image processor
 ]
 
 [project.scripts]
@@ -29,8 +31,8 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.uv]
-# Kev caps mlx-lm below 0.32 only because 0.31 was current when its MLX backend landed
-override-dependencies = ["mlx-lm==0.32.2"]
+# Kev caps mlx-lm below 0.32 and torch below 2.9 only because those were current when it was written
+override-dependencies = ["mlx-lm==0.32.2", "torch>=2.15"]
 
 [tool.uv.sources]
 kev = { path = "vendor/kev", editable = true }
@@ -38,4 +40,5 @@ kev = { path = "vendor/kev", editable = true }
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = ["live: needs running models (decisionctl start / llmctl start)"]

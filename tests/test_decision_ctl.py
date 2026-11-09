@@ -94,3 +94,20 @@ def test_start_runs_kev_serve_on_the_model_port(tmp_path, monkeypatch, capsys):
     ctl.start(reg, SimpleNamespace(name="m", timeout=60))
     assert calls == [("m", ["-m", "kev.serve", "--run", str(tmp_path / "ck"), "--port", "8011"], 60)]
     assert "m ready on :8011 (mlx bf16)" in capsys.readouterr().out
+
+
+def test_start_runs_the_systemone_server_for_other_runtimes(tmp_path, monkeypatch):
+    reg = Registry(tmp_path / "decision.toml", "m", {"m": ModelSpec("m", run="x/y@abc", port=8011, server="kanana")})
+    monkeypatch.setattr(servers, "LOGS", tmp_path)
+    monkeypatch.setattr(servers, "port_in_use", lambda port: False)
+    monkeypatch.setattr(ctl, "info_of", lambda spec: None)
+    calls = []
+    monkeypatch.setattr(servers, "launch", lambda spec, cmd, ready, timeout: calls.append(cmd[1:]) or {"backend": "torch", "dtype": "bf16"})
+    ctl.start(reg, SimpleNamespace(name="m", timeout=60))
+    assert calls == [["-m", "local_models.decision.systemone", "--server", "kanana", "--run", "x/y@abc", "--port", "8011"]]
+
+
+def test_merge_refuses_other_runtimes(tmp_path):
+    reg = Registry(tmp_path / "decision.toml", "m", {"m": ModelSpec("m", run="x/y@abc", port=8011, server="pplx-decider")})
+    with pytest.raises(SystemExit, match="only kev models can be merged"):
+        ctl.merge(reg, SimpleNamespace(name="m"))

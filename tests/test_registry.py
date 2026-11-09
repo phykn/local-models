@@ -64,6 +64,7 @@ def test_unknown_model(tmp_path):
     ('run = "x/y@v1"\nport = 1\nmemory_gbb = 4', "unknown keys memory_gbb"),   # a typo must not silently become memory_gb = 0
     ("port = 1", "missing 1 required positional argument: 'run'"),   # start would otherwise fail with a TypeError
     ('run = "x/y@v1"', "missing 1 required positional argument: 'port'"),   # the app and kev.serve need one
+    ('server = "jev"\nrun = "x/y@v1"\nport = 1', "server must be one of kev, kanana, pplx-decider"),
 ])
 def test_decision_registry_rejects_bad_tables(tmp_path, table, error):
     with pytest.raises(RegistryError, match=error):

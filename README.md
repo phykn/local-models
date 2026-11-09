@@ -6,13 +6,15 @@ Servers listen only on `127.0.0.1` and have no authentication.
 
 ## Models
 
-**Decision models** return calibrated probabilities instead of generated text. They answer yes/no, choice, and score questions. The [Kev](https://github.com/jaredpalmer/kev) format is used.
+**Decision models** return calibrated probabilities instead of generated text. They answer yes/no, choice, and score questions, and all of them take [Kev](https://github.com/jaredpalmer/kev)'s request format.
 
 | Model | Memory | Notes |
 |---|---|---|
-| [Kev-4B](https://huggingface.co/jaredpalmer/kev-4b) | 16 GB | Default |
+| [Kev-4B](https://huggingface.co/jaredpalmer/kev-4b) | 16 GB | |
 | [Kev-0.8B](https://huggingface.co/jaredpalmer/kev-0.8b) | 3 GB | Smallest |
 | [Malkuth-2B](https://huggingface.co/dhtocks/malkuth-2b) | 7 GB | Fewest high-confidence errors on Korean. Non-commercial |
+| [Kanana-2-V-Decide-3B](https://huggingface.co/kakaocorp/kanana-2-v-decide-3b-2611) | 10 GB | Default. Most accurate on Korean. Own license |
+| [pplx-decider-flash v1.2](https://huggingface.co/perplexity-ai/pplx-decider-flash-v1.2) | 15 GB | Fastest per question. Runs in bf16 (the model loads fp32 off CUDA, 21 GB) |
 
 **LLMs** are for drafting, translating, summarizing, or getting a second opinion. They accept text and image input.
 
@@ -34,7 +36,7 @@ git clone https://github.com/phykn/local-models.git && cd local-models
 git clone https://github.com/jaredpalmer/kev.git vendor/kev && git -C vendor/kev checkout kev-1.0
 uv sync --python 3.13
 .venv/bin/llmctl pull qwen3.8-27b                 # weights go to weight/
-HF_HUB_OFFLINE=0 .venv/bin/decisionctl start kev-4b    # the first start downloads the model
+HF_HUB_OFFLINE=0 .venv/bin/decisionctl start kanana-2-v-decide-3b    # the first start downloads the model
 ```
 
 ## Use
@@ -58,7 +60,7 @@ claude mcp add llm-local --scope user -- "$PWD/.venv/bin/llm-mcp"
 **Command line**: `decisionctl` and `llmctl` take the same commands: `start`, `stop`, `status`, `list`, and `port`.
 
 ```bash
-.venv/bin/decisionctl start kev-4b
+.venv/bin/decisionctl start kanana-2-v-decide-3b
 ```
 
 **HTTP**
@@ -80,4 +82,4 @@ Models are registered in `decision.toml` and `llm.toml`. Each entry sets the wei
 
 ## License
 
-This project is MIT licensed. Kev, Qwen, MiniCPM-V, and Gemma 4 are Apache-2.0. Malkuth-2B is CC BY-NC 4.0, which allows non-commercial use only.
+This project is MIT licensed. Kev, Qwen, MiniCPM-V, and Gemma 4 are Apache-2.0. Malkuth-2B is CC BY-NC 4.0, which allows non-commercial use only. pplx-decider is Apache-2.0. Kanana-2-V-Decide is under the Kanana Open License: some uses need a separate commercial license from Kakao, and services built on it must show "Powered by Kanana". Read its LICENSE before use.
