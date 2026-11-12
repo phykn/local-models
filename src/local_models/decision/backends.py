@@ -29,7 +29,7 @@ class SystemOneBackend:
         self.timeout = timeout
 
     async def decide(self, state, questions):
-        body = {"state": state, "model": "kev-latest", "questions": questions}
+        body = {"state": state, "questions": questions}
         if await self.info() is None:
             raise BackendError(self.not_running())
         try:
@@ -50,14 +50,13 @@ class SystemOneBackend:
     async def info(self):
         try:
             async with httpx.AsyncClient(timeout=2) as c:
-                r = await c.get(f"{self.url}/v1/models")
+                r = await c.get(f"{self.url}/v1/info")
             r.raise_for_status()
-            m = r.json()["models"][0]
-        except (httpx.HTTPError, ValueError, KeyError, IndexError):   # nothing there, or another kind of server
+            info = r.json()
+        except (httpx.HTTPError, ValueError):   # nothing there, or another kind of server
             return None
-        if m.get("run") != self.spec.run:   # models can share a port, so the server there may be another model
-            return None
-        return {k: m.get(k) for k in ("run", "base", "backend", "dtype", "temperature", "device")}
+        # models can share a port, so the server there may be another model
+        return info if isinstance(info, dict) and info.get("run") == self.spec.run else None
 
     def not_running(self):
         return f"model {self.spec.name!r} is not running on {self.url}. Start it with: decisionctl start {self.spec.name}"

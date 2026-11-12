@@ -10,8 +10,6 @@ from local_models import ROOT
 from local_models.decision.backends import SystemOneBackend
 from local_models.decision.registry import load_registry
 
-ERROR_BUDGET = 0.05
-
 
 def probs_and_target(q, ans):
     if q["type"] == "noul":
@@ -28,7 +26,7 @@ def coverage(rows):
     best, threshold, wrong = 0.0, None, 0
     for i, r in enumerate(rows, 1):
         wrong += not r["correct"]
-        if wrong / i <= ERROR_BUDGET:
+        if wrong / i <= 0.05:   # the error budget behind coverage_at_5pct
             best, threshold = i / len(rows), r["confidence"]
     return best, threshold
 

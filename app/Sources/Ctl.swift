@@ -14,7 +14,7 @@ let projects = [
     Project(key: "llm", title: "LLM", ctl: root.appendingPathComponent(".venv/bin/llmctl")),
 ]
 
-// decodes servers.list_row and servers.status_row
+// decodes the rows of `list --json` and `status --json` (src/local_models/ctl.py)
 struct Model: Decodable {
     let name: String
     var port: Int

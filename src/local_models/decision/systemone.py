@@ -4,7 +4,6 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
@@ -34,7 +33,6 @@ class Score(BaseModel):
 
 class SystemOneRequest(BaseModel):
     state: JSON
-    model: str = "kev-latest"
     questions: dict[str, Noul | Choice | Score] = Field(min_length=1)
 
 
@@ -50,8 +48,6 @@ class Kanana:
 
         self.model = AutoModel.from_pretrained(path, trust_remote_code=True, dtype=torch.bfloat16,
                                                attn_implementation="sdpa").to(device).eval()
-        self.dtype = "bf16"
-        self.temperature = self.model.config.decision_temperature
 
     def decide(self, state, questions):
         return self.model.system_one(state=state, questions=questions)["answers"]
@@ -74,8 +70,6 @@ class PplxDecider:
         finally:
             model.Qwen3_5Model = backbone
         self.decider.readout.to(torch.bfloat16)
-        self.dtype = "bf16"
-        self.temperature = self.decider.temperature
 
     def decide(self, state, questions):
         # one question per request, the mode the model card recommends; the requests still run as one batch
@@ -94,15 +88,12 @@ async def systemone(req: SystemOneRequest):
         answers = await asyncio.get_running_loop().run_in_executor(WORKER, app.state.runtime.decide, req.state, questions)
     except (ValueError, TypeError) as e:   # both runtimes raise ValueError subclasses for inputs they cannot answer
         raise HTTPException(422, str(e))
-    return {"model": req.model, "answers": answers, "latency_ms": round((time.perf_counter() - t0) * 1000, 1)}
+    return {"answers": answers, "latency_ms": round((time.perf_counter() - t0) * 1000, 1)}
 
 
-@app.get("/v1/models")
-def models():
-    s = app.state
-    return {"models": [{"name": "kev-latest", "description": f"{s.server} on {s.device}", "run": s.run, "base": s.server,
-                        "backend": "torch", "dtype": s.runtime.dtype, "device": s.device,
-                        "temperature": s.runtime.temperature}]}
+@app.get("/v1/info")
+def info():
+    return {"run": app.state.run, "server": app.state.server, "device": app.state.device}
 
 
 def main():

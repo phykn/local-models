@@ -6,8 +6,6 @@ from conftest import decision_spec
 
 
 class FakeRuntime:
-    dtype, temperature = "bf16", 1.5
-
     def decide(self, state, questions):
         if state == "too long":
             raise ValueError("input has 30,000 tokens; the limit is 20,480")
@@ -24,7 +22,7 @@ def port(serve):
 
 async def test_backend_talks_to_the_systemone_server(port):
     b = SystemOneBackend(decision_spec(run="x/y@abc", port=port, server="kanana"))
-    assert (await b.info())["dtype"] == "bf16"
+    assert await b.info() == {"run": "x/y@abc", "server": "kanana", "device": "mps"}
     out = await b.decide("환불해 주세요", {"q": {"type": "noul", "instructions": "환불 요청인가?"}})
     assert out["answers"]["q"]["answer"] is True
     # questions reach the runtime as plain dicts without the fields the caller left out

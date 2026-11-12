@@ -28,11 +28,11 @@ def fake_server():
             raise HTTPException(422, "state has 70,000 tokens; the limit is 65,536")
         if body["state"] == "boom":
             raise HTTPException(500, "internal error")
-        return {"model": "kev-latest", "answers": {qid: CANNED[q["type"]] for qid, q in body["questions"].items()}, "latency_ms": 12}
+        return {"answers": {qid: CANNED[q["type"]] for qid, q in body["questions"].items()}, "latency_ms": 12}
 
-    @app.get("/v1/models")
-    def models():
-        return {"models": [{"name": "kev-latest", "run": "x/fake@v1", "backend": "mlx", "dtype": "bfloat16"}]}
+    @app.get("/v1/info")
+    def info():
+        return {"run": "x/fake@v1", "server": "kanana", "device": "mps"}
     return app
 
 
