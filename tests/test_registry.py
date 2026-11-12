@@ -7,12 +7,14 @@ from local_models.registry import RegistryError
 TOML = '''default = "a"
 
 [models."a"]
+server = "kanana"
 run = "x/a@v1"
 port = 8011   # keep this comment
 memory_gb = 16
 description = ""
 
 [models.b]
+server = "kanana"
 run = "x/b@v1"
 memory_gb = 4
 description = ""
@@ -62,15 +64,15 @@ def test_unknown_model(tmp_path):
         reg_of(tmp_path).get("c")
 
 
-DECISION = 'run = "x/y@v1"\nport = 1\nmemory_gb = 4\ndescription = ""\n'
-LLM = DECISION + "think = {}\nnothink = {}\n"
+LLM = 'run = "x/y@v1"\nport = 1\nmemory_gb = 4\ndescription = ""\nthink = {}\nnothink = {}\n'
+DECISION = 'server = "kanana"\nrun = "x/y@v1"\nport = 1\nmemory_gb = 4\ndescription = ""\n'
 
 
 @pytest.mark.parametrize("table, error", [
     (DECISION.replace("memory_gb", "memory_gbb"), "unknown keys memory_gbb"),   # a typo must not silently become a default
     (DECISION.replace('run = "x/y@v1"\n', ""), "missing 1 required positional argument: 'run'"),
     (DECISION.replace("port = 1\n", ""), "missing 1 required positional argument: 'port'"),   # the app and the servers need one
-    (DECISION + 'server = "jev"', "server must be one of kev, kanana, pplx-decider"),
+    (DECISION.replace('"kanana"', '"kev"'), "server must be one of kanana, pplx-decider"),
     (DECISION.replace("x/y@v1", "checkpoints/x"), "run must be repo@revision, not 'checkpoints/x'"),
 ])
 def test_decision_registry_rejects_bad_tables(tmp_path, table, error):
@@ -80,7 +82,7 @@ def test_decision_registry_rejects_bad_tables(tmp_path, table, error):
 
 @pytest.mark.parametrize("table, error", [
     (LLM + "min_confidence = 0.5", "unknown keys min_confidence"),
-    (DECISION, "missing 2 required positional arguments: 'think' and 'nothink'"),
+    (LLM.replace("think = {}\nnothink = {}\n", ""), "missing 2 required positional arguments: 'think' and 'nothink'"),
 ])
 def test_llm_registry_rejects_bad_tables(tmp_path, table, error):
     with pytest.raises(RegistryError, match=error):

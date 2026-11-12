@@ -4,7 +4,7 @@ from fastmcp import Client
 from conftest import decision_spec, registry_of
 
 from local_models.decision import mcp_server
-from local_models.decision.backends import BackendError, KevHttpBackend, normalize
+from local_models.decision.backends import BackendError, SystemOneBackend, normalize
 from local_models.decision.registry import load_registry
 
 CANNED = {
@@ -16,7 +16,7 @@ CANNED = {
 }
 
 
-def fake_kev():
+def fake_server():
     app = FastAPI()
     app.state.last = None
 
@@ -38,7 +38,7 @@ def fake_kev():
 
 @pytest.fixture(scope="module")
 def fake_port(serve):
-    app = fake_kev()
+    app = fake_server()
     return serve(app), app
 
 
@@ -94,18 +94,13 @@ async def test_errors(client):
 
 async def test_port_change_while_running(fake_port, monkeypatch, tmp_path):
     path = tmp_path / "models.toml"
-    path.write_text('[models.m]\nrun = "x/fake@v1"\nport = 1\nmemory_gb = 4\ndescription = ""\n')
+    path.write_text('[models.m]\nserver = "kanana"\nrun = "x/fake@v1"\nport = 1\nmemory_gb = 4\ndescription = ""\n')
     monkeypatch.setattr(mcp_server, "reg", load_registry(path))
     async with Client(mcp_server.mcp) as c:
         down = await c.call_tool("yes_no", {"text": "t", "question": "q"}, raise_on_error=False)
         path.write_text(path.read_text().replace("port = 1", f"port = {fake_port[0]}"))
         up = await c.call_tool("yes_no", {"text": "t", "question": "q"})
     assert down.is_error and up.data["answer"] is True
-
-
-def test_api_key_from_environment(monkeypatch):
-    monkeypatch.setenv("KEV_API_KEY", "secret")
-    assert KevHttpBackend(decision_spec()).headers == {"authorization": "Bearer secret"}
 
 
 async def test_list_models(client):
@@ -115,14 +110,14 @@ async def test_list_models(client):
     assert by["fake"]["running"] and by["fake"]["default"] and by["down"]["start"] == "decisionctl start down"
 
 
-async def test_other_server_on_the_port_is_not_kev(serve):
+async def test_other_kind_of_server_on_the_port(serve):
     app = FastAPI()
     app.get("/v1/models")(lambda: {"object": "list", "data": [{"id": "some-llm"}]})   # an OpenAI-style server
-    assert await KevHttpBackend(decision_spec(port=serve(app))).info() is None
+    assert await SystemOneBackend(decision_spec(port=serve(app))).info() is None
 
 
 async def test_another_model_on_a_shared_port(fake_port):
-    other = KevHttpBackend(decision_spec("other", port=fake_port[0]))
+    other = SystemOneBackend(decision_spec("other", port=fake_port[0]))
     assert await other.info() is None
     with pytest.raises(BackendError, match="'other' is not running"):
         await other.decide("t", {"q": {"type": "noul", "instructions": "q"}})
@@ -137,7 +132,7 @@ async def test_live_korean():
     reg = load_registry()
     ran = 0
     for spec in reg.models.values():
-        b = KevHttpBackend(spec)
+        b = SystemOneBackend(spec)
         if not await b.info():
             continue
         out = await b.decide("어제 주문한 신발이 2주 늦게 왔고 사이즈도 틀렸어요. 카드 결제도 두 번 됐네요.", {

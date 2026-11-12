@@ -1,13 +1,16 @@
 [project]
 name = "local-models"
 version = "0.1.0"
-description = "Local decision models (Kev format) and LLMs on Apple Silicon, with MCP servers and one Mac app"
+description = "Local decision models and LLMs on Apple Silicon, with MCP servers and one Mac app"
 requires-python = ">=3.12,<3.14"
 license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
-    "kev[serve]",
     "mlx-vlm==0.7.10",
+    "torch>=2.15",
+    "transformers>=5.22",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
     "fastmcp>=4.1",
     "httpx>=0.28",
     "torchvision>=0.29",   # Qwen3.5 image processor (pplx-decider)
@@ -29,13 +32,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.uv]
-# Kev caps mlx-lm below 0.32 and torch below 2.9 only because those were current when it was written
-override-dependencies = ["mlx-lm==0.32.2", "torch>=2.15"]
-
-[tool.uv.sources]
-kev = { path = "vendor/kev", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

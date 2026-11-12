@@ -1,5 +1,3 @@
-import os
-
 import httpx
 
 
@@ -11,7 +9,7 @@ def normalize(raw):
     t = raw["type"]
     if t == "noul":
         p = raw["noul"]
-        # a noul has no confidence of its own; |p - 0.5| * 2 is Kev's choice confidence for two options,
+        # a noul has no confidence of its own; |p - 0.5| * 2 is the choice confidence for two options,
         # so one threshold means the same for every question type
         out = {"answer": p >= 0.5, "probability_yes": p, "confidence": round(abs(p - 0.5) * 2, 4)}
     elif t == "choice":
@@ -24,12 +22,10 @@ def normalize(raw):
     return {"type": t, **out, "low_confidence": out["confidence"] < 0.5}
 
 
-class KevHttpBackend:
+class SystemOneBackend:
     def __init__(self, spec, timeout=300):
         self.spec = spec
         self.url = f"http://127.0.0.1:{spec.port}"
-        key = os.environ.get("KEV_API_KEY")   # kev.serve started with it in the environment requires it on every request
-        self.headers = {"authorization": f"Bearer {key}"} if key else {}
         self.timeout = timeout
 
     async def decide(self, state, questions):
@@ -38,13 +34,13 @@ class KevHttpBackend:
             raise BackendError(self.not_running())
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as c:
-                r = await c.post(f"{self.url}/v1/systemone", json=body, headers=self.headers)
+                r = await c.post(f"{self.url}/v1/systemone", json=body)
         except httpx.ConnectError:
             raise BackendError(self.not_running())
         except httpx.TimeoutException:
             raise BackendError(f"model {self.spec.name!r} did not answer within {self.timeout}s")
         if r.status_code == 422:
-            raise BackendError(f"Kev rejected the request: {r.json().get('detail', r.text)}")
+            raise BackendError(f"model {self.spec.name!r} rejected the request: {r.json().get('detail', r.text)}")
         if r.is_error:
             raise BackendError(f"model {self.spec.name!r} answered HTTP {r.status_code}: {r.text[:300]}")
         d = r.json()
@@ -54,10 +50,10 @@ class KevHttpBackend:
     async def info(self):
         try:
             async with httpx.AsyncClient(timeout=2) as c:
-                r = await c.get(f"{self.url}/v1/models", headers=self.headers)
+                r = await c.get(f"{self.url}/v1/models")
             r.raise_for_status()
             m = r.json()["models"][0]
-        except (httpx.HTTPError, ValueError, KeyError, IndexError):   # nothing there, or a server that is not Kev
+        except (httpx.HTTPError, ValueError, KeyError, IndexError):   # nothing there, or another kind of server
             return None
         if m.get("run") != self.spec.run:   # models can share a port, so the server there may be another model
             return None

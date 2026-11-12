@@ -33,9 +33,9 @@ nothink = { temperature = 0.7, top_p = 0.95, top_k = 100, repetition_penalty = 1
 [models."gemma4-26b-a4b"]
 run = "mlx-community/gemma-4-26B-A4B-it-qat-4bit@0e3cbab38ce568cf6e23543010d08d03b731910c"
 port = 8082
-# measured: 15 GiB loaded, 17.5 at an 8k-token prompt, 20.6 at a 28k-token prompt; runs beside kev-4b (8.4 GiB) up to about an 8k-token prompt on a 32 GB Mac
+# measured: 15 GiB loaded, 17.5 at an 8k-token prompt, 20.6 at a 28k-token prompt
 memory_gb = 21
-description = "Gemma 4 26B-A4B MoE, 4-bit QAT. Fast, good at prose and role-play; fits beside kev-4b. Text and image input"
+description = "Gemma 4 26B-A4B MoE, 4-bit QAT. Fast, good at prose and role-play. Text and image input"
 # the model card gives one sampling set for both modes
 think = { temperature = 1.0, top_p = 0.95, top_k = 64 }
 nothink = { temperature = 1.0, top_p = 0.95, top_k = 64 }

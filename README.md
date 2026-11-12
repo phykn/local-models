@@ -6,15 +6,12 @@ Servers listen only on `127.0.0.1` and have no authentication.
 
 ## Models
 
-**Decision models** return calibrated probabilities instead of generated text. They answer yes/no, choice, and score questions, and all of them take [Kev](https://github.com/jaredpalmer/kev)'s request format.
+**Decision models** return calibrated probabilities instead of generated text. They answer yes/no, choice, and score questions, and both serve the same `POST /v1/systemone` request format.
 
 | Model | Memory | Notes |
 |---|---|---|
-| [Kev-4B](https://huggingface.co/jaredpalmer/kev-4b) | 16 GB | |
-| [Kev-0.8B](https://huggingface.co/jaredpalmer/kev-0.8b) | 3 GB | Smallest |
-| [Malkuth-2B](https://huggingface.co/dhtocks/malkuth-2b) | 7 GB | Fewest high-confidence errors on Korean. Non-commercial |
 | [Kanana-2-V-Decide-3B](https://huggingface.co/kakaocorp/kanana-2-v-decide-3b-2611) | 10 GB | Default. Most accurate on Korean. Own license |
-| [pplx-decider-flash v1.2](https://huggingface.co/perplexity-ai/pplx-decider-flash-v1.2) | 15 GB | Fastest per question. Runs in bf16 (the model loads fp32 off CUDA, 21 GB) |
+| [pplx-decider-flash v1.2](https://huggingface.co/perplexity-ai/pplx-decider-flash-v1.2) | 15 GB | Best calibrated. Apache-2.0. Runs in bf16 (the model loads fp32 off CUDA, 21 GB) |
 
 **LLMs** are for drafting, translating, summarizing, or getting a second opinion. They accept text and image input.
 
@@ -23,7 +20,7 @@ Servers listen only on `127.0.0.1` and have no authentication.
 | [Qwen3.8-27B](https://huggingface.co/mlx-community/Qwen3.8-27B-mxfp4) | 23 GB | Default |
 | [Qwen3.6-35B-A3B](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-mxfp4) | 23 GB | Faster (MoE) |
 | [MiniCPM-V 4.7 35B-A3B](https://huggingface.co/mlx-community/MiniCPM-V-4.7-35B-A3B-mxfp4) | 25 GB | Strong with images. Up to an ~8k-token prompt on 32 GB |
-| [Gemma 4 26B-A4B](https://huggingface.co/mlx-community/gemma-4-26B-A4B-it-qat-4bit) | 21 GB | Fast (MoE), good at prose. Runs beside Kev-4B up to a ~8k-token prompt on 32 GB |
+| [Gemma 4 26B-A4B](https://huggingface.co/mlx-community/gemma-4-26B-A4B-it-qat-4bit) | 21 GB | Fast (MoE), good at prose |
 
 Memory is the measured peak, with a long prompt for the LLMs. Each section runs one model at a time.
 
@@ -33,7 +30,6 @@ You need an Apple Silicon Mac and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/phykn/local-models.git && cd local-models
-git clone https://github.com/jaredpalmer/kev.git vendor/kev && git -C vendor/kev checkout kev-1.0
 uv sync --python 3.13
 .venv/bin/llmctl pull qwen3.8-27b                 # weights go to weight/
 HF_HUB_OFFLINE=0 .venv/bin/decisionctl start kanana-2-v-decide-3b    # the first start downloads the model
@@ -66,7 +62,7 @@ claude mcp add llm-local --scope user -- "$PWD/.venv/bin/llm-mcp"
 **HTTP**
 
 - LLMs serve an OpenAI-compatible API at `/v1/chat/completions` on port 8082. Set `model` to the id from `/v1/models`. Send `"enable_thinking": false` to turn thinking off.
-- Decision models serve `POST /v1/systemone` on port 8081. See the [Kev README](https://github.com/jaredpalmer/kev) for the request format.
+- Decision models serve `POST /v1/systemone` on port 8081. Send `{"state": text, "questions": {id: question}}`, with questions shaped as in the `decide` tool.
 
 ## Configure
 
@@ -82,4 +78,4 @@ Models are registered in `decision.toml` and `llm.toml`. Each entry sets the wei
 
 ## License
 
-This project is MIT licensed. Kev, Qwen, MiniCPM-V, and Gemma 4 are Apache-2.0. Malkuth-2B is CC BY-NC 4.0, which allows non-commercial use only. pplx-decider is Apache-2.0. Kanana-2-V-Decide is under the Kanana Open License: some uses need a separate commercial license from Kakao, and services built on it must show "Powered by Kanana". Read its LICENSE before use.
+This project is MIT licensed. Qwen, MiniCPM-V, Gemma 4, and pplx-decider are Apache-2.0. Kanana-2-V-Decide is under the Kanana Open License: some uses need a separate commercial license from Kakao, and services built on it must show "Powered by Kanana". Read its LICENSE before use.

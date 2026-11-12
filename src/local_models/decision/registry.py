@@ -3,8 +3,7 @@ from dataclasses import dataclass
 from .. import ROOT
 from ..registry import Registry
 
-# kev: kev.serve; the others: local_models.decision.systemone with that runtime. All serve /v1/systemone.
-SERVERS = ("kev", "kanana", "pplx-decider")
+SERVERS = ("kanana", "pplx-decider")
 
 
 @dataclass(frozen=True)
@@ -12,9 +11,9 @@ class ModelSpec:
     name: str
     run: str
     port: int
+    server: str
     memory_gb: float
     description: str
-    server: str = "kev"
 
     def __post_init__(self):
         if self.server not in SERVERS:

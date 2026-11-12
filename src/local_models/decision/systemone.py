@@ -5,8 +5,38 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from typing import Literal
+
 from fastapi import FastAPI, HTTPException
-from kev.api import SystemOneRequest
+from pydantic import BaseModel, Field
+
+JSON = str | dict | list | int | float | bool | None
+
+
+# the /v1/systemone request (TypeSafe's System One shape); a choice or score has 1 to 255 options
+class Noul(BaseModel):
+    type: Literal["noul"]
+    instructions: JSON = None
+    criteria: dict[str, JSON] | None = None
+
+
+class Choice(BaseModel):
+    type: Literal["choice"]
+    instructions: JSON = None
+    criteria: dict[str, JSON] = Field(min_length=1, max_length=255)
+
+
+class Score(BaseModel):
+    type: Literal["score"]
+    instructions: JSON = None
+    criteria: list[JSON] = Field(min_length=1, max_length=255)
+
+
+class SystemOneRequest(BaseModel):
+    state: JSON
+    model: str = "kev-latest"
+    questions: dict[str, Noul | Choice | Score] = Field(min_length=1)
+
 
 app = FastAPI()
 # one thread loads the model and runs every request, so one model answers one request at a time

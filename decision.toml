@@ -1,24 +1,6 @@
-# memory_gb is the measured peak footprint (GiB, rounded up), which for an adapter model is while loading: the merge briefly holds two copies.
+# memory_gb is the measured peak footprint (GiB, rounded up).
 
 default = "kanana-2-v-decide-3b"
-
-[models."kev-4b"]
-run = "jaredpalmer/kev-4b@v1.0"
-port = 8081
-memory_gb = 16
-description = "Kev-4B (Qwen3.5-4B-Base + LoRA)"
-
-[models."kev-0.8b"]
-run = "jaredpalmer/kev-0.8b@v1.0"
-port = 8081
-memory_gb = 3
-description = "Kev-0.8B. Faster, less accurate"
-
-[models."malkuth-2b"]
-run = "dhtocks/malkuth-2b@37ae1672eebcf9ee5417418bd0be49f2e53d9087"
-port = 8081
-memory_gb = 7
-description = "Malkuth-2B (Kev-format LoRA on a Qwen3.8-2B distill). Fewest high-confidence errors on Korean. Non-commercial license (CC BY-NC 4.0)"
 
 [models."kanana-2-v-decide-3b"]
 server = "kanana"
@@ -32,4 +14,4 @@ server = "pplx-decider"
 run = "perplexity-ai/pplx-decider-flash-v1.2@9ff7cf9838e59df461c276b7699d56b244d2af58"
 port = 8081
 memory_gb = 15
-description = "pplx-decider-flash v1.2 (Qwen3.5-4B distilled from the 27B pplx-decider), bf16. Fastest per question"
+description = "pplx-decider-flash v1.2 (Qwen3.5-4B distilled from the 27B pplx-decider), bf16. Best calibrated; Apache-2.0"

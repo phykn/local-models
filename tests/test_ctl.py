@@ -40,7 +40,7 @@ def test_start_launches_the_command(ctl, monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(servers, "launch", lambda spec, cmd, ready, timeout: calls.append((spec.name, cmd[1:], timeout)))
     ctl.start(SimpleNamespace(name="a", timeout=60))
-    assert calls == [("a", ["-m", "kev.serve", "--run", "x/a@v1", "--port", "8011"], 60)]
+    assert calls == [("a", ["-m", "local_models.decision.systemone", "--server", "kanana", "--run", "x/a@v1", "--port", "8011"], 60)]
     assert "a ready on http://127.0.0.1:8011" in capsys.readouterr().out
 
 

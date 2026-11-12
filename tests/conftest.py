@@ -26,7 +26,7 @@ def serve():
 
 def decision_spec(name="m", **kw):
     from local_models.decision.registry import ModelSpec
-    return ModelSpec(name, **{"run": f"x/{name}@v1", "port": 1, "memory_gb": 0, "description": "", **kw})
+    return ModelSpec(name, **{"run": f"x/{name}@v1", "port": 1, "server": "kanana", "memory_gb": 0, "description": "", **kw})
 
 
 def llm_spec(name="m", **kw):

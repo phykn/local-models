@@ -2,7 +2,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 from ..registry import RegistryError
-from .backends import BackendError, KevHttpBackend
+from .backends import BackendError, SystemOneBackend
 from .registry import load_registry
 
 READ_ONLY = {"readOnlyHint": True, "openWorldHint": False}
@@ -10,7 +10,7 @@ LOW_CONFIDENCE_NOTE = ("Every answer carries probabilities and a confidence in [
                        "the answer alone: check it yourself or ask the user.")
 
 mcp = FastMCP("decision", instructions=(
-    "Local decision models (Kev format): fast, calibrated classification of a text without generating any. Use choose for one of "
+    "Local decision models: fast, calibrated classification of a text without generating any. Use choose for one of "
     "several options, yes_no for a yes/no judgement, score for a level on an ordered scale, decide for several questions "
     "about the same text in one call. The model reads only the text and the question you pass, so put everything it "
     "needs into them. " + LOW_CONFIDENCE_NOTE))
@@ -26,7 +26,7 @@ def registry():
 
 async def ask(model, text, questions):
     try:
-        return await KevHttpBackend(registry().get(model)).decide(text, questions)
+        return await SystemOneBackend(registry().get(model)).decide(text, questions)
     except (RegistryError, BackendError) as e:
         raise ToolError(str(e))
 
@@ -42,7 +42,7 @@ async def list_models() -> dict:
     reg = registry()
     models = []
     for spec in reg.models.values():
-        info = await KevHttpBackend(spec).info()
+        info = await SystemOneBackend(spec).info()
         models.append({"name": spec.name, "description": spec.description, "default": spec.name == reg.default,
                        "running": info is not None,
                        **({"serving": info} if info else {"start": f"decisionctl start {spec.name}"})})
@@ -88,7 +88,7 @@ async def score(text: str, question: str, levels: list[str], model: str | None =
 async def decide(text: str, questions: dict[str, dict], model: str | None = None) -> dict:
     """Ask several questions about the same text in one call (the text is read once).
 
-    questions maps your own id to a question in Kev's /v1/systemone shape:
+    questions maps your own id to a question in the /v1/systemone shape:
       {"type": "choice", "instructions": "...", "criteria": {"option": "description or null", ...}}
       {"type": "noul",   "instructions": "...", "criteria": {"true": "...", "false": "..."}}   (criteria optional; noul = yes/no)
       {"type": "score",  "instructions": "...", "criteria": ["lowest level", ..., "highest level"]}
