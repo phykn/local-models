@@ -17,10 +17,9 @@ Servers listen only on `127.0.0.1` and have no authentication.
 
 | Model | Memory | Notes |
 |---|---|---|
-| [Qwen3.8-27B](https://huggingface.co/mlx-community/Qwen3.8-27B-mxfp4) | 23 GB | Default |
-| [Qwen3.6-35B-A3B](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-mxfp4) | 23 GB | Faster (MoE) |
-| [MiniCPM-V 4.7 35B-A3B](https://huggingface.co/mlx-community/MiniCPM-V-4.7-35B-A3B-mxfp4) | 25 GB | Strong with images. Up to an ~8k-token prompt on 32 GB |
 | [Gemma 4 26B-A4B](https://huggingface.co/mlx-community/gemma-4-26B-A4B-it-qat-4bit) | 21 GB | Fast (MoE), good at prose |
+| [Qwen3.6-35B-A3B](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-mxfp4) | 23 GB | Faster than Qwen3.8 (MoE) |
+| [Qwen3.8-27B](https://huggingface.co/mlx-community/Qwen3.8-27B-mxfp4) | 23 GB | Default |
 
 Memory is the measured peak, with a long prompt for the LLMs. Each section runs one model at a time.
 
@@ -78,4 +77,4 @@ Models are registered in `decision.toml` and `llm.toml`. Each entry sets the wei
 
 ## License
 
-This project is MIT licensed. Qwen, MiniCPM-V, Gemma 4, and pplx-decider are Apache-2.0. Kanana-2-V-Decide is under the Kanana Open License: some uses need a separate commercial license from Kakao, and services built on it must show "Powered by Kanana". Read its LICENSE before use.
+This project is MIT licensed. Qwen, Gemma 4, and pplx-decider are Apache-2.0. Kanana-2-V-Decide is under the Kanana Open License: some uses need a separate commercial license from Kakao, and services built on it must show "Powered by Kanana". Read its LICENSE before use.
