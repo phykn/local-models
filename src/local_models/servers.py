@@ -7,9 +7,7 @@ import sys
 import time
 from contextlib import suppress
 
-from . import ROOT
-
-LOGS = ROOT / "logs"
+from . import LOGS, ROOT
 
 
 def pid_of(name):
@@ -45,15 +43,8 @@ def port_in_use(port):
         return s.connect_ex(("127.0.0.1", port)) == 0
 
 
-def refuse_busy_port(reg, spec):
-    if port_in_use(spec.port):
-        # models may share a port, so this is usually another model; the server would fail and orphan its pid file
-        on = [s.name for s in reg.models.values() if s.port == spec.port and s.name != spec.name and pid_of(s.name)]
-        raise SystemExit(f"port {spec.port} is in use" + (f" by {', '.join(on)}; stop it first" if on else ""))
-
-
 def free_gb():
-    # what macOS can hand out without swapping
+    # what macOS can hand out without swapping; LOCAL-MODELS.app counts it the same way
     s = subprocess.check_output(["vm_stat"], text=True)
     page = int(re.search(r"page size of (\d+)", s)[1])
     pages = sum(int(re.search(rf"{k}:\s+(\d+)", s)[1]) for k in ("Pages free", "Pages inactive", "Pages speculative", "Pages purgeable"))
@@ -75,8 +66,8 @@ def launch(spec, cmd, ready, timeout):
             pidf.unlink(missing_ok=True)
             tail = log.read_text(errors="replace").splitlines()[-20:]
             sys.exit(f"{spec.name} exited with {p.returncode}:\n" + "\n".join(tail))
-        if info := ready():
-            return info
+        if ready():
+            return
         time.sleep(2)
     sys.exit(f"{spec.name} did not answer within {timeout}s; it is still starting, see the log")
 

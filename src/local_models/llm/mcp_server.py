@@ -2,8 +2,8 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 from ..registry import RegistryError
-from .backends import BackendError, OpenAIBackend
-from .registry import load_registry
+from .client import ChatClient, ClientError
+from .models import load_registry
 
 READ_ONLY = {"readOnlyHint": True, "openWorldHint": False}
 
@@ -18,19 +18,19 @@ reg = load_registry()
 
 def registry():
     global reg
-    reg = reg.reload()   # LOCAL-MODELS.app can change a port in llm.toml while this server runs
+    reg = reg.reload()   # LOCAL-MODELS.app can change the port in llm.toml while this server runs
     return reg
 
 
 @mcp.tool(annotations=READ_ONLY)
 async def list_models() -> dict:
     """The registered local models, which one is the default, and whether each is running (with its start command if not)."""
-    reg = registry()
+    r = registry()
     models = []
-    for spec in reg.models.values():
-        info = await OpenAIBackend(spec).info()
-        models.append({"name": spec.name, "description": spec.description, "default": spec.name == reg.default,
-                       "running": info is not None, "url": f"http://127.0.0.1:{spec.port}/v1",
+    for spec in r.models.values():
+        info = await ChatClient(spec, r.port).info()
+        models.append({"name": spec.name, "description": spec.description, "default": spec.name == r.default,
+                       "running": info is not None, "url": f"http://127.0.0.1:{r.port}/v1",
                        **({} if info else {"start": f"llmctl start {spec.name}"})})
     return {"models": models}
 
@@ -48,8 +48,9 @@ async def ask(prompt: str, system: str | None = None, model: str | None = None, 
     """
     messages = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt}]
     try:
-        return await OpenAIBackend(registry().get(model)).chat(messages, think=think, max_tokens=max_tokens)
-    except (RegistryError, BackendError) as e:
+        r = registry()
+        return await ChatClient(r.get(model), r.port).chat(messages, think=think, max_tokens=max_tokens)
+    except (RegistryError, ClientError) as e:
         raise ToolError(str(e))
 
 

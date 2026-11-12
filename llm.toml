@@ -1,11 +1,10 @@
 # memory_gb is the measured peak footprint (GiB, rounded up) while loading and answering a ~28k-token prompt; ctl warns when free memory is below it.
-# Models may share a port; only one of them can run at a time.
 
 default = "qwen3.8-27b"
+port = 8082   # every model of this kind; one runs at a time
 
 [models."gemma4-26b-a4b"]
 run = "mlx-community/gemma-4-26B-A4B-it-qat-4bit@0e3cbab38ce568cf6e23543010d08d03b731910c"
-port = 8082
 # measured: 15 GiB loaded, 17.5 at an 8k-token prompt, 20.6 at a 28k-token prompt
 memory_gb = 21
 description = "Gemma 4 26B-A4B MoE, 4-bit QAT. Fast, good at prose and role-play. Text and image input"
@@ -15,7 +14,6 @@ nothink = { temperature = 1.0, top_p = 0.95, top_k = 64 }
 
 [models."qwen3.6-35b-a3b"]
 run = "mlx-community/Qwen3.6-35B-A3B-mxfp4@833013b27a1f7c6dbb008b55d37c387ea22ea89d"
-port = 8082
 memory_gb = 23
 description = "Qwen3.6-35B-A3B MoE, 4-bit mxfp4. About six times faster than qwen3.8-27b, weaker at coding and reasoning. Text and image input"
 think = { temperature = 1.0, top_p = 0.95, top_k = 20, presence_penalty = 1.5 }
@@ -23,7 +21,6 @@ nothink = { temperature = 0.7, top_p = 0.8, top_k = 20, presence_penalty = 1.5 }
 
 [models."qwen3.8-27b"]
 run = "mlx-community/Qwen3.8-27B-mxfp4@97ab0819817ab1c61d7d39f9169fc71999915641"
-port = 8082
 memory_gb = 23
 description = "Qwen3.8-27B, 4-bit mxfp4. Text and image input"
 # sampling from the model card, for thinking on and off

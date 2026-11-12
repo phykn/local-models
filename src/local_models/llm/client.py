@@ -1,19 +1,19 @@
 import httpx
 
 
-class BackendError(Exception):
+class ClientError(Exception):
     pass
 
 
 def strip_thinking(text):
-    # servers that do not split reasoning out leave it in content; the template may open <think> in the prompt
+    # reasoning the server did not split out stays in content; the template may open <think> in the prompt
     return text.rsplit("</think>", 1)[-1].lstrip() if "</think>" in text else text
 
 
-class OpenAIBackend:
-    def __init__(self, spec, timeout=900):
+class ChatClient:
+    def __init__(self, spec, port, timeout=900):
         self.spec = spec
-        self.url = f"http://127.0.0.1:{spec.port}"
+        self.url = f"http://127.0.0.1:{port}"
         self.timeout = timeout
 
     async def info(self):
@@ -25,7 +25,7 @@ class OpenAIBackend:
         except (httpx.HTTPError, ValueError, KeyError, TypeError):
             return None
         # mlx-vlm lists HF cache repos, and the loaded model by its snapshot path with loaded=true
-        cache = "models--" + self.spec.repo.replace("/", "--")
+        cache = "models--" + self.spec.run.split("@")[0].replace("/", "--")
         for m in data if isinstance(data, list) else []:
             mid = str(m.get("id", "")) if isinstance(m, dict) else ""
             if cache in mid and m.get("loaded"):
@@ -35,7 +35,7 @@ class OpenAIBackend:
     async def chat(self, messages, think=False, max_tokens=2048):
         s = self.spec
         if not (info := await self.info()):
-            raise BackendError(self.not_running())
+            raise ClientError(self.not_running())
         # mlx-vlm requires the loaded model's id
         body = {"model": info["id"], "messages": messages, "max_tokens": max_tokens, **(s.think if think else s.nothink),
                 "enable_thinking": think}
@@ -43,11 +43,11 @@ class OpenAIBackend:
             async with httpx.AsyncClient(timeout=self.timeout) as c:
                 r = await c.post(f"{self.url}/v1/chat/completions", json=body)
         except httpx.ConnectError:
-            raise BackendError(self.not_running())
+            raise ClientError(self.not_running())
         except httpx.TimeoutException:
-            raise BackendError(f"model {s.name!r} did not answer within {self.timeout}s")
+            raise ClientError(f"model {s.name!r} did not answer within {self.timeout}s")
         if r.is_error:
-            raise BackendError(f"model {s.name!r} answered HTTP {r.status_code}: {r.text[:300]}")
+            raise ClientError(f"model {s.name!r} answered HTTP {r.status_code}: {r.text[:300]}")
         d = r.json()
         choice = d["choices"][0]
         return {"model": s.name, "text": strip_thinking(choice["message"].get("content") or ""),

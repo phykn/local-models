@@ -9,9 +9,8 @@ SERVERS = ("kanana", "pplx-decider")
 @dataclass(frozen=True)
 class ModelSpec:
     name: str
-    run: str
-    port: int
     server: str
+    run: str
     memory_gb: float
     description: str
 

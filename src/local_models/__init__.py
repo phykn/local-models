@@ -2,3 +2,4 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 WEIGHTS = ROOT / "weight"
+LOGS = ROOT / "logs"

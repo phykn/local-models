@@ -1,4 +1,5 @@
-import AppKit
+import Darwin
+import SwiftUI
 
 let totalGB = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
 
@@ -14,51 +15,36 @@ func freeGB() -> Double {
     return Double(pages) * Double(vm_kernel_page_size) / 1_073_741_824
 }
 
-final class MemoryGauge: NSView {
-    private let bar = Bar()
-    private let value = label("", size: 12, color: .secondaryLabelColor)
+// SwiftUI's @State needs a macro plugin that the Command Line Tools lack, so view state lives in @Observable objects
+@MainActor @Observable
+final class Memory {
+    private(set) var free = freeGB()
+    func update() { free = freeGB() }
+}
 
-    init() {
-        super.init(frame: .zero)
-        let title = label("Memory", size: 12, weight: .medium, color: .secondaryLabelColor)
-        value.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
-        value.alignment = .right
-        let row = NSStackView(views: [title, bar, value])
-        row.spacing = 12
-        row.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(row)
-        NSLayoutConstraint.activate([
-            row.leadingAnchor.constraint(equalTo: leadingAnchor), row.trailingAnchor.constraint(equalTo: trailingAnchor),
-            row.centerYAnchor.constraint(equalTo: centerYAnchor),
-            bar.heightAnchor.constraint(equalToConstant: 6),
-            value.widthAnchor.constraint(equalToConstant: 140),
-        ])
-        setAccessibilityElement(true)
-        setAccessibilityRole(.levelIndicator)
-        setAccessibilityLabel("Memory")
-        update()
-    }
-    required init?(coder: NSCoder) { fatalError() }
+struct MemoryGauge: View {
+    let free: Double
 
-    func update() {
-        let free = freeGB()
-        bar.used = 1 - free / totalGB
-        value.stringValue = String(format: "%.1f of %.0f GB free", free, totalGB)
-        setAccessibilityValue(value.stringValue)
-    }
-
-    // red from 90%, about where macOS starts to swap
-    private final class Bar: NSView {
-        var used = 0.0 { didSet { needsDisplay = true } }
-
-        override func draw(_ r: NSRect) {
-            let radius = bounds.height / 2
-            NSColor.labelColor.withAlphaComponent(0.1).setFill()
-            NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
-            let share = min(max(used, 0), 1)
-            (share > 0.9 ? NSColor.systemRed : share > 0.75 ? NSColor.systemOrange : NSColor.secondaryLabelColor).setFill()
-            let fill = NSRect(x: 0, y: 0, width: max(bounds.height, bounds.width * share), height: bounds.height)
-            NSBezierPath(roundedRect: fill, xRadius: radius, yRadius: radius).fill()
+    var body: some View {
+        let used = min(max(1 - free / totalGB, 0), 1)
+        let text = String(format: "%.1f of %.0f GB free", free, totalGB)
+        HStack(spacing: 12) {
+            Text("Memory").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(.primary.opacity(0.1))
+                    // red from 90%, about where macOS starts to swap
+                    Capsule().fill(used > 0.9 ? Color.red : used > 0.75 ? .orange : .secondary)
+                        .frame(width: max(g.size.height, g.size.width * used))
+                }
+            }
+            .frame(height: 6)
+            Text(text).font(.system(size: 12).monospacedDigit()).foregroundStyle(.secondary)
+                .frame(width: 140, alignment: .trailing)
         }
+        .frame(height: 24)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Memory")
+        .accessibilityValue(text)
     }
 }

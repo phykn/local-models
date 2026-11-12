@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 JSON = str | dict | list | int | float | bool | None
 
 
-# the /v1/systemone request (TypeSafe's System One shape); a choice or score has 1 to 255 options
+# the request of TypeSafe's System One API; a choice or score has 1 to 255 options
 class Noul(BaseModel):
     type: Literal["noul"]
     instructions: JSON = None
@@ -34,11 +34,6 @@ class Score(BaseModel):
 class SystemOneRequest(BaseModel):
     state: JSON
     questions: dict[str, Noul | Choice | Score] = Field(min_length=1)
-
-
-app = FastAPI()
-# one thread loads the model and runs every request, so one model answers one request at a time
-WORKER = ThreadPoolExecutor(max_workers=1)
 
 
 class Kanana:
@@ -79,6 +74,10 @@ class PplxDecider:
 
 RUNTIMES = {"kanana": Kanana, "pplx-decider": PplxDecider}
 
+app = FastAPI()
+# one thread loads the model and runs every request, so one model answers one request at a time
+WORKER = ThreadPoolExecutor(max_workers=1)
+
 
 @app.post("/v1/systemone")
 async def systemone(req: SystemOneRequest):
@@ -93,25 +92,23 @@ async def systemone(req: SystemOneRequest):
 
 @app.get("/v1/info")
 def info():
-    return {"run": app.state.run, "server": app.state.server, "device": app.state.device}
+    return app.state.info
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--server", required=True, choices=list(RUNTIMES))
-    ap.add_argument("--run", required=True, help="Hugging Face id@revision")
+    ap.add_argument("--run", required=True, help="Hugging Face id@revision, reported by /v1/info")
+    ap.add_argument("--model", required=True, type=Path, help="the downloaded snapshot of --run")
     ap.add_argument("--port", type=int, required=True)
     a = ap.parse_args()
     import torch
-    from huggingface_hub import snapshot_download
-
-    repo, rev = a.run.split("@", 1)
-    path = Path(snapshot_download(repo, revision=rev))
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
-    app.state.runtime = WORKER.submit(RUNTIMES[a.server], path, device).result()
-    app.state.server, app.state.run, app.state.device = a.server, a.run, device
-    print(f"serving {a.run} ({path}) via {a.server} on {device} at 127.0.0.1:{a.port}", flush=True)
     import uvicorn
+
+    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    app.state.runtime = WORKER.submit(RUNTIMES[a.server], a.model, device).result()
+    app.state.info = {"run": a.run, "server": a.server, "device": device}
+    print(f"serving {a.run} ({a.model}) via {a.server} on {device} at 127.0.0.1:{a.port}", flush=True)
     uvicorn.run(app, host="127.0.0.1", port=a.port)
 
 

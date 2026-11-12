@@ -1,16 +1,16 @@
 import sys
 
 from .. import ctl
-from .backends import SystemOneBackend
-from .registry import load_registry
+from .client import SystemOneClient
+from .models import load_registry
 
 
 class Ctl(ctl.Ctl):
     prog = "decisionctl"
-    backend = SystemOneBackend
     load_registry = staticmethod(load_registry)
+    client = SystemOneClient
     timeout = 3600
 
-    def command(self, spec):
-        return [sys.executable, "-m", "local_models.decision.systemone", "--server", spec.server, "--run", spec.run,
-                "--port", str(spec.port)]
+    def command(self, spec, path):
+        return [sys.executable, "-m", "local_models.decision.server", "--server", spec.server, "--run", spec.run,
+                "--model", str(path), "--port", str(self.reg.port)]

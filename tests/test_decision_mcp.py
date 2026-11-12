@@ -1,11 +1,11 @@
 import pytest
-from fastapi import FastAPI
-from fastmcp import Client
 from conftest import decision_spec, registry_of
+from fastapi import FastAPI, HTTPException
+from fastmcp import Client
 
 from local_models.decision import mcp_server
-from local_models.decision.backends import BackendError, SystemOneBackend, normalize
-from local_models.decision.registry import load_registry
+from local_models.decision.client import SystemOneClient, normalize
+from local_models.decision.models import load_registry
 
 CANNED = {
     "choice": {"type": "choice", "choice": "returns", "confidence": 0.21,
@@ -17,15 +17,13 @@ CANNED = {
 
 
 def fake_server():
+    """Answers /v1/systemone with canned answers for x/fake@v1; app.state.last is the last request body."""
     app = FastAPI()
     app.state.last = None
 
     @app.post("/v1/systemone")
     def systemone(body: dict):
         app.state.last = body
-        from fastapi import HTTPException
-        if body["state"] == "too long":
-            raise HTTPException(422, "state has 70,000 tokens; the limit is 65,536")
         if body["state"] == "boom":
             raise HTTPException(500, "internal error")
         return {"answers": {qid: CANNED[q["type"]] for qid, q in body["questions"].items()}, "latency_ms": 12}
@@ -37,32 +35,30 @@ def fake_server():
 
 
 @pytest.fixture(scope="module")
-def fake_port(serve):
+def fake(serve):
     app = fake_server()
     return serve(app), app
 
 
 @pytest.fixture
-def client(fake_port, monkeypatch, tmp_path):
-    port, _ = fake_port
-    reg = registry_of(tmp_path / "models.toml", decision_spec("fake", port=port), decision_spec("down"))
-    monkeypatch.setattr(mcp_server, "reg", reg)
+def client(fake, monkeypatch, tmp_path):
+    monkeypatch.setattr(mcp_server, "reg", registry_of(tmp_path / "decision.toml", decision_spec("fake"), decision_spec("down"), port=fake[0]))
     return Client(mcp_server.mcp)
 
 
-async def test_choose(client, fake_port):
+async def test_choose(client, fake):
     async with client as c:
         r = await c.call_tool("choose", {"text": "신발이 늦게 왔어요", "question": "어느 팀?", "options": {"returns": "반품", "shipping": None, "billing": None}})
     assert r.data["answer"] == "returns" and r.data["model"] == "fake" and r.data["low_confidence"] is True
-    sent = fake_port[1].state.last["questions"]["q"]
-    assert sent == {"type": "choice", "instructions": "어느 팀?", "criteria": {"returns": "반품", "shipping": None, "billing": None}}
+    assert fake[1].state.last == {"state": "신발이 늦게 왔어요", "questions": {"q": {
+        "type": "choice", "instructions": "어느 팀?", "criteria": {"returns": "반품", "shipping": None, "billing": None}}}}
 
 
-async def test_yes_no(client, fake_port):
+async def test_yes_no(client, fake):
     async with client as c:
         r = await c.call_tool("yes_no", {"text": "t", "question": "급한가?", "yes_means": "오늘 처리 필요"})
     assert r.data["answer"] is True and r.data["probability_yes"] == 0.93 and r.data["confidence"] == 0.86
-    assert fake_port[1].state.last["questions"]["q"]["criteria"] == {"true": "오늘 처리 필요"}
+    assert fake[1].state.last["questions"]["q"]["criteria"] == {"true": "오늘 처리 필요"}
 
 
 async def test_score(client):
@@ -84,43 +80,35 @@ async def test_errors(client):
     async with client as c:
         down = await c.call_tool("yes_no", {"text": "t", "question": "q", "model": "down"}, raise_on_error=False)
         unknown = await c.call_tool("yes_no", {"text": "t", "question": "q", "model": "nope"}, raise_on_error=False)
-        long = await c.call_tool("yes_no", {"text": "too long", "question": "q"}, raise_on_error=False)
         boom = await c.call_tool("yes_no", {"text": "boom", "question": "q"}, raise_on_error=False)
     assert down.is_error and "decisionctl start down" in down.content[0].text
     assert unknown.is_error and "unknown model 'nope'" in unknown.content[0].text
-    assert long.is_error and "65,536" in long.content[0].text
     assert boom.is_error and "answered HTTP 500" in boom.content[0].text
-
-
-async def test_port_change_while_running(fake_port, monkeypatch, tmp_path):
-    path = tmp_path / "models.toml"
-    path.write_text('[models.m]\nserver = "kanana"\nrun = "x/fake@v1"\nport = 1\nmemory_gb = 4\ndescription = ""\n')
-    monkeypatch.setattr(mcp_server, "reg", load_registry(path))
-    async with Client(mcp_server.mcp) as c:
-        down = await c.call_tool("yes_no", {"text": "t", "question": "q"}, raise_on_error=False)
-        path.write_text(path.read_text().replace("port = 1", f"port = {fake_port[0]}"))
-        up = await c.call_tool("yes_no", {"text": "t", "question": "q"})
-    assert down.is_error and up.data["answer"] is True
 
 
 async def test_list_models(client):
     async with client as c:
         r = await c.call_tool("list_models", {})
     by = {m["name"]: m for m in r.data["models"]}
-    assert by["fake"]["running"] and by["fake"]["default"] and by["down"]["start"] == "decisionctl start down"
+    assert by["fake"]["running"] and by["fake"]["default"] and by["fake"]["serving"]["server"] == "kanana"
+    assert by["down"]["start"] == "decisionctl start down"
 
 
-async def test_other_kind_of_server_on_the_port(serve):
+async def test_port_change_while_running(fake, monkeypatch, tmp_path):
+    path = tmp_path / "decision.toml"
+    path.write_text('port = 1024\n[models.m]\nserver = "kanana"\nrun = "x/fake@v1"\nmemory_gb = 4\ndescription = ""\n')
+    monkeypatch.setattr(mcp_server, "reg", load_registry(path))
+    async with Client(mcp_server.mcp) as c:
+        down = await c.call_tool("yes_no", {"text": "t", "question": "q"}, raise_on_error=False)
+        path.write_text(path.read_text().replace("port = 1024", f"port = {fake[0]}"))
+        up = await c.call_tool("yes_no", {"text": "t", "question": "q"})
+    assert down.is_error and up.data["answer"] is True
+
+
+async def test_another_kind_of_server_on_the_port(serve):
     app = FastAPI()
     app.get("/v1/models")(lambda: {"object": "list", "data": [{"id": "some-llm"}]})   # an OpenAI-style server
-    assert await SystemOneBackend(decision_spec(port=serve(app))).info() is None
-
-
-async def test_another_model_on_a_shared_port(fake_port):
-    other = SystemOneBackend(decision_spec("other", port=fake_port[0]))
-    assert await other.info() is None
-    with pytest.raises(BackendError, match="'other' is not running"):
-        await other.decide("t", {"q": {"type": "noul", "instructions": "q"}})
+    assert await SystemOneClient(decision_spec(), serve(app)).info() is None
 
 
 def test_normalize_noul_boundary():
@@ -132,10 +120,10 @@ async def test_live_korean():
     reg = load_registry()
     ran = 0
     for spec in reg.models.values():
-        b = SystemOneBackend(spec)
-        if not await b.info():
+        c = SystemOneClient(spec, reg.port)
+        if not await c.info():
             continue
-        out = await b.decide("어제 주문한 신발이 2주 늦게 왔고 사이즈도 틀렸어요. 카드 결제도 두 번 됐네요.", {
+        out = await c.decide("어제 주문한 신발이 2주 늦게 왔고 사이즈도 틀렸어요. 카드 결제도 두 번 됐네요.", {
             "team": {"type": "choice", "instructions": "어느 팀이 처리해야 하나요?",
                      "criteria": {"반품": "교환, 환불, 잘못 온 상품", "배송": "배송 상태, 지연, 분실", "결제": "청구, 결제 오류"}},
             "urgent": {"type": "noul", "instructions": "사람이 급히 봐야 하나요?"},

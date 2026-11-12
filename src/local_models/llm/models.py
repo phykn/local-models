@@ -8,15 +8,10 @@ from ..registry import Registry
 class ModelSpec:
     name: str
     run: str
-    port: int
     memory_gb: float
     description: str
     think: dict
     nothink: dict
-
-    @property
-    def repo(self):
-        return self.run.split("@")[0]
 
 
 def load_registry(path=ROOT / "llm.toml"):

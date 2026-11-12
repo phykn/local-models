@@ -1,7 +1,7 @@
 import httpx
 
 
-class BackendError(Exception):
+class ClientError(Exception):
     pass
 
 
@@ -22,30 +22,11 @@ def normalize(raw):
     return {"type": t, **out, "low_confidence": out["confidence"] < 0.5}
 
 
-class SystemOneBackend:
-    def __init__(self, spec, timeout=300):
+class SystemOneClient:
+    def __init__(self, spec, port, timeout=300):
         self.spec = spec
-        self.url = f"http://127.0.0.1:{spec.port}"
+        self.url = f"http://127.0.0.1:{port}"
         self.timeout = timeout
-
-    async def decide(self, state, questions):
-        body = {"state": state, "questions": questions}
-        if await self.info() is None:
-            raise BackendError(self.not_running())
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as c:
-                r = await c.post(f"{self.url}/v1/systemone", json=body)
-        except httpx.ConnectError:
-            raise BackendError(self.not_running())
-        except httpx.TimeoutException:
-            raise BackendError(f"model {self.spec.name!r} did not answer within {self.timeout}s")
-        if r.status_code == 422:
-            raise BackendError(f"model {self.spec.name!r} rejected the request: {r.json().get('detail', r.text)}")
-        if r.is_error:
-            raise BackendError(f"model {self.spec.name!r} answered HTTP {r.status_code}: {r.text[:300]}")
-        d = r.json()
-        answers = {qid: normalize(a) for qid, a in d["answers"].items()}
-        return {"model": self.spec.name, "answers": answers, "latency_ms": d.get("latency_ms")}
 
     async def info(self):
         try:
@@ -55,8 +36,26 @@ class SystemOneBackend:
             info = r.json()
         except (httpx.HTTPError, ValueError):   # nothing there, or another kind of server
             return None
-        # models can share a port, so the server there may be another model
+        # the kind's models share the port, so the server there may be another model
         return info if isinstance(info, dict) and info.get("run") == self.spec.run else None
+
+    async def decide(self, state, questions):
+        if await self.info() is None:
+            raise ClientError(self.not_running())
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as c:
+                r = await c.post(f"{self.url}/v1/systemone", json={"state": state, "questions": questions})
+        except httpx.ConnectError:
+            raise ClientError(self.not_running())
+        except httpx.TimeoutException:
+            raise ClientError(f"model {self.spec.name!r} did not answer within {self.timeout}s")
+        if r.status_code == 422:
+            raise ClientError(f"model {self.spec.name!r} rejected the request: {r.json().get('detail', r.text)}")
+        if r.is_error:
+            raise ClientError(f"model {self.spec.name!r} answered HTTP {r.status_code}: {r.text[:300]}")
+        d = r.json()
+        return {"model": self.spec.name, "answers": {qid: normalize(a) for qid, a in d["answers"].items()},
+                "latency_ms": d["latency_ms"]}
 
     def not_running(self):
         return f"model {self.spec.name!r} is not running on {self.url}. Start it with: decisionctl start {self.spec.name}"

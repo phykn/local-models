@@ -2,32 +2,33 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 from ..registry import RegistryError
-from .backends import BackendError, SystemOneBackend
-from .registry import load_registry
+from .client import ClientError, SystemOneClient
+from .models import load_registry
 
 READ_ONLY = {"readOnlyHint": True, "openWorldHint": False}
-LOW_CONFIDENCE_NOTE = ("Every answer carries probabilities and a confidence in [0, 1]. When low_confidence is true, do not act on "
-                       "the answer alone: check it yourself or ask the user.")
+LOW_CONFIDENCE = ("Every answer carries probabilities and a confidence in [0, 1]. When low_confidence is true, do not act on "
+                  "the answer alone: check it yourself or ask the user.")
 
 mcp = FastMCP("decision", instructions=(
     "Local decision models: fast, calibrated classification of a text without generating any. Use choose for one of "
     "several options, yes_no for a yes/no judgement, score for a level on an ordered scale, decide for several questions "
     "about the same text in one call. The model reads only the text and the question you pass, so put everything it "
-    "needs into them. " + LOW_CONFIDENCE_NOTE))
+    "needs into them. " + LOW_CONFIDENCE))
 
 reg = load_registry()
 
 
 def registry():
     global reg
-    reg = reg.reload()   # LOCAL-MODELS.app can change a port in decision.toml while this server runs
+    reg = reg.reload()   # LOCAL-MODELS.app can change the port in decision.toml while this server runs
     return reg
 
 
 async def ask(model, text, questions):
     try:
-        return await SystemOneBackend(registry().get(model)).decide(text, questions)
-    except (RegistryError, BackendError) as e:
+        r = registry()
+        return await SystemOneClient(r.get(model), r.port).decide(text, questions)
+    except (RegistryError, ClientError) as e:
         raise ToolError(str(e))
 
 
@@ -39,11 +40,11 @@ async def ask_one(model, text, question):
 @mcp.tool(annotations=READ_ONLY)
 async def list_models() -> dict:
     """The registered decision models, which one is the default, and whether each is running (with its start command if not)."""
-    reg = registry()
+    r = registry()
     models = []
-    for spec in reg.models.values():
-        info = await SystemOneBackend(spec).info()
-        models.append({"name": spec.name, "description": spec.description, "default": spec.name == reg.default,
+    for spec in r.models.values():
+        info = await SystemOneClient(spec, r.port).info()
+        models.append({"name": spec.name, "description": spec.description, "default": spec.name == r.default,
                        "running": info is not None,
                        **({"serving": info} if info else {"start": f"decisionctl start {spec.name}"})})
     return {"models": models}

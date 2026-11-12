@@ -4,11 +4,13 @@ import json
 import os
 import sys
 
-from . import WEIGHTS, servers
+from . import LOGS, WEIGHTS, servers, weights
 from .registry import RegistryError
 
 
 class Ctl:
+    """The CLI both kinds share; a subclass sets prog, load_registry, client and timeout, and defines command."""
+
     def __init__(self, reg):
         self.reg = reg
 
@@ -18,11 +20,12 @@ class Ctl:
         sub = ap.add_subparsers(dest="cmd", required=True)
         sub.add_parser("list").add_argument("--json", action="store_true")
         sub.add_parser("status").add_argument("--json", action="store_true")
-        p = sub.add_parser("start"); p.add_argument("name"); p.add_argument("--timeout", type=int, default=cls.timeout)
+        p = sub.add_parser("start")
+        p.add_argument("name")
+        p.add_argument("--timeout", type=int, default=cls.timeout)
         sub.add_parser("stop").add_argument("name")
-        p = sub.add_parser("port"); p.add_argument("name"); p.add_argument("port", type=int)
-        if hasattr(cls, "pull"):
-            sub.add_parser("pull").add_argument("name")
+        sub.add_parser("port").add_argument("port", type=int)
+        sub.add_parser("pull").add_argument("name")
         a = ap.parse_args()
         os.environ.setdefault("HF_HOME", str(WEIGHTS))   # inherited by the servers
         # only pull downloads; everything else, the servers included, uses weights already in weight/
@@ -33,18 +36,22 @@ class Ctl:
             sys.exit(str(e))
 
     def info(self, spec):
-        return asyncio.run(self.backend(spec).info())
+        return asyncio.run(self.client(spec, self.reg.port).info())
 
-    def url(self, spec):
-        return f"http://127.0.0.1:{spec.port}"
+    def url(self):
+        return f"http://127.0.0.1:{self.reg.port}"
 
-    def note(self, spec):
-        return {}
+    def note(self, path):
+        return None
 
     # the rows of list and status are the JSON that LOCAL-MODELS.app decodes; change Ctl.swift with them
     def list(self, a):
-        rows = [{"name": s.name, "port": s.port, "memory_gb": s.memory_gb, "default": s.name == self.reg.default,
-                 "note": None, "missing": False, **self.note(s)} for s in self.reg.models.values()]
+        rows = []
+        for spec in self.reg.models.values():
+            path = weights.find(spec.run)
+            rows.append({"name": spec.name, "port": self.reg.port, "memory_gb": spec.memory_gb,
+                         "default": spec.name == self.reg.default,
+                         "note": self.note(path) if path else "not downloaded", "missing": path is None})
         if a.json:
             print(json.dumps(rows))
             return
@@ -57,32 +64,39 @@ class Ctl:
         for spec in self.reg.models.values():
             info, pid = self.info(spec), servers.pid_of(spec.name)
             state = "running" if info and pid else "external" if info else "starting" if pid else "stopped"
-            rows.append({"name": spec.name, "state": state, "url": self.url(spec)})
+            rows.append({"name": spec.name, "state": state, "url": self.url()})
             if not a.json:
                 default = " (default)" if spec.name == self.reg.default else ""
-                print(f"{spec.name:<{w}} {state:<9} :{spec.port}  pid={pid or '-':<7} {spec.run}{default}")
+                print(f"{spec.name:<{w}} {state:<9} pid={pid or '-':<7} {spec.run}{default}")
         if a.json:
             print(json.dumps(rows))
 
     def start(self, a):
         spec = self.reg.get(a.name)
         if self.info(spec):
-            print(f"{spec.name} is already running on :{spec.port}")
+            print(f"{spec.name} is already running on :{self.reg.port}")
             return
         if pid := servers.pid_of(spec.name):
             # a second server on the same port would fail and orphan the first one's pid file
-            print(f"{spec.name} is still starting (pid {pid}); see {servers.LOGS / f'{spec.name}.log'}")
+            print(f"{spec.name} is still starting (pid {pid}); see {LOGS / f'{spec.name}.log'}")
             return
-        servers.refuse_busy_port(self.reg, spec)
-        servers.launch(spec, self.command(spec), lambda: self.info(spec), a.timeout)
-        print(f"{spec.name} ready on {self.url(spec)}")
+        if servers.port_in_use(self.reg.port):
+            on = [s.name for s in self.reg.models.values() if servers.pid_of(s.name)]
+            sys.exit(f"port {self.reg.port} is in use" + (f" by {', '.join(on)}; stop it first" if on else ""))
+        if not (path := weights.find(spec.run)):
+            sys.exit(f"{spec.name} is not downloaded; run: {self.prog} pull {spec.name}")
+        servers.launch(spec, self.command(spec, path), lambda: self.info(spec), a.timeout)
+        print(f"{spec.name} ready on {self.url()}")
 
     def stop(self, a):
         servers.stop(self.reg.get(a.name).name)
 
     def port(self, a):
+        if on := [s.name for s in self.reg.models.values() if servers.pid_of(s.name) or self.info(s)]:
+            sys.exit(f"stop {', '.join(on)} before changing the port")
+        self.reg.set_port(a.port)
+        print(f"{self.prog.removesuffix('ctl')} models now use port {a.port}")
+
+    def pull(self, a):
         spec = self.reg.get(a.name)
-        if servers.pid_of(spec.name) or self.info(spec):
-            sys.exit(f"stop {spec.name} before changing its port")
-        self.reg.set_port(spec.name, a.port)
-        print(f"{spec.name} now uses port {a.port}")
+        print(f"{spec.name} -> {weights.pull(spec.run)}")
