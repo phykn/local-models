@@ -12,20 +12,6 @@ from . import ROOT
 LOGS = ROOT / "logs"
 
 
-# list_row and status_row are the JSON that LOCAL-MODELS.app decodes; change Ctl.swift with them
-def list_row(reg, spec, note=None, missing=False):
-    return {"name": spec.name, "port": spec.port, "memory_gb": spec.memory_gb, "default": spec.name == reg.default,
-            "note": note, "missing": missing}
-
-
-def status_row(spec, info, pid, url):
-    return {"name": spec.name, "state": state(info, pid), "url": url}
-
-
-def state(info, pid):
-    return "running" if info and pid else "external" if info else "starting" if pid else "stopped"
-
-
 def pid_of(name):
     f = LOGS / f"{name}.pid"
     if not f.exists():

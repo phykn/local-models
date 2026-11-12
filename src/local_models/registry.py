@@ -11,34 +11,35 @@ class RegistryError(Exception):
 @dataclass(frozen=True)
 class Registry:
     path: Path
+    spec: type
     default: str
     models: dict
 
-    spec = None
-
     @classmethod
-    def load(cls, path):
+    def load(cls, path, spec):
         path = Path(path)
         cfg = tomllib.loads(path.read_text())
         if not cfg.get("models"):
             raise RegistryError(f'{path} has no [models."name"] tables')
-        known = {f.name for f in fields(cls.spec)} - {"name"}
+        known = {f.name for f in fields(spec)} - {"name"}
         models = {}
         for name, table in cfg["models"].items():
             if unknown := set(table) - known:
                 raise RegistryError(f"model {name!r} in {path}: unknown keys {', '.join(sorted(unknown))}")
             try:
-                models[name] = cls.spec(name=name, **table)
+                models[name] = spec(name=name, **table)
             except (TypeError, ValueError) as e:
                 raise RegistryError(f"model {name!r} in {path}: {e}") from None
+            if "@" not in models[name].run:
+                raise RegistryError(f"model {name!r} in {path}: run must be repo@revision, not {models[name].run!r}")
         default = cfg.get("default") or next(iter(models))
         if default not in models:
             raise RegistryError(f"default model {default!r} is not in {path}")
-        return cls(path, default, models)
+        return cls(path, spec, default, models)
 
     def reload(self):
         try:
-            return self.load(self.path)
+            return self.load(self.path, self.spec)
         except (OSError, tomllib.TOMLDecodeError, RegistryError):   # the app may be rewriting the file
             return self
 

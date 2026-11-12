@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import httpx
 
 
@@ -26,28 +24,21 @@ class OpenAIBackend:
             data = r.json()["data"]
         except (httpx.HTTPError, ValueError, KeyError, TypeError):
             return None
-        needles = self.needles()
+        # mlx-vlm lists HF cache repos, and the loaded model by its snapshot path with loaded=true
+        cache = "models--" + self.spec.repo.replace("/", "--")
         for m in data if isinstance(data, list) else []:
             mid = str(m.get("id", "")) if isinstance(m, dict) else ""
-            if any(n in mid for n in needles) and m.get("loaded", True):
+            if cache in mid and m.get("loaded"):
                 return {"id": mid}
         return None
 
-    def needles(self):
-        # mlx-vlm lists the loaded model by its snapshot path with loaded=true; mlx-lm lists HF cache repos by id
-        s = self.spec
-        return [s.repo, "models--" + s.repo.replace("/", "--")] if s.repo else [Path(s.run).name]
-
     async def chat(self, messages, think=False, max_tokens=2048):
         s = self.spec
-        body = {"messages": messages, "max_tokens": max_tokens, **(s.think if think else s.nothink),
-                # mlx-lm reads chat_template_kwargs, mlx-vlm reads enable_thinking; each ignores the other
-                "chat_template_kwargs": {"enable_thinking": think}, "enable_thinking": think}
-        if s.server == "mlx-vlm":
-            # mlx-vlm requires the loaded model's id; mlx-lm treats any id as a model to load, so it gets none
-            if not (info := await self.info()):
-                raise BackendError(self.not_running())
-            body["model"] = info["id"]
+        if not (info := await self.info()):
+            raise BackendError(self.not_running())
+        # mlx-vlm requires the loaded model's id
+        body = {"model": info["id"], "messages": messages, "max_tokens": max_tokens, **(s.think if think else s.nothink),
+                "enable_thinking": think}
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as c:
                 r = await c.post(f"{self.url}/v1/chat/completions", json=body)

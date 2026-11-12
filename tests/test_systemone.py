@@ -2,7 +2,7 @@ import pytest
 
 from local_models.decision import systemone
 from local_models.decision.backends import BackendError, KevHttpBackend
-from local_models.decision.registry import ModelSpec
+from conftest import decision_spec
 
 
 class FakeRuntime:
@@ -23,7 +23,7 @@ def port(serve):
 
 
 async def test_backend_talks_to_the_systemone_server(port):
-    b = KevHttpBackend(ModelSpec("m", run="x/y@abc", port=port, server="kanana"))
+    b = KevHttpBackend(decision_spec(run="x/y@abc", port=port, server="kanana"))
     assert (await b.info())["dtype"] == "bf16"
     out = await b.decide("환불해 주세요", {"q": {"type": "noul", "instructions": "환불 요청인가?"}})
     assert out["answers"]["q"]["answer"] is True
@@ -32,13 +32,13 @@ async def test_backend_talks_to_the_systemone_server(port):
 
 
 async def test_runtime_value_error_is_a_422(port):
-    b = KevHttpBackend(ModelSpec("m", run="x/y@abc", port=port, server="kanana"))
+    b = KevHttpBackend(decision_spec(run="x/y@abc", port=port, server="kanana"))
     with pytest.raises(BackendError, match="the limit is 20,480"):
         await b.decide("too long", {"q": {"type": "noul"}})
 
 
 async def test_another_model_on_the_port_is_not_running(port):
-    b = KevHttpBackend(ModelSpec("other", run="x/z@abc", port=port, server="kanana"))
+    b = KevHttpBackend(decision_spec("other", run="x/z@abc", port=port, server="kanana"))
     with pytest.raises(BackendError, match="not running"):
         await b.decide("x", {"q": {"type": "noul"}})
 

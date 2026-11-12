@@ -15,9 +15,9 @@ dependencies = [
 ]
 
 [project.scripts]
-decisionctl = "local_models.decision.ctl:main"
+decisionctl = "local_models.decision.ctl:Ctl.main"
 decision-mcp = "local_models.decision.mcp_server:main"
-llmctl = "local_models.llm.ctl:main"
+llmctl = "local_models.llm.ctl:Ctl.main"
 llm-mcp = "local_models.llm.mcp_server:main"
 
 [dependency-groups]

@@ -22,3 +22,19 @@ def serve():
     yield start
     for srv in started:
         srv.should_exit = True
+
+
+def decision_spec(name="m", **kw):
+    from local_models.decision.registry import ModelSpec
+    return ModelSpec(name, **{"run": f"x/{name}@v1", "port": 1, "memory_gb": 0, "description": "", **kw})
+
+
+def llm_spec(name="m", **kw):
+    from local_models.llm.registry import ModelSpec
+    return ModelSpec(name, **{"run": f"x/{name}@v1", "port": 1, "memory_gb": 0, "description": "",
+                              "think": {"temperature": 1.0}, "nothink": {"temperature": 0.7}, **kw})
+
+
+def registry_of(path, *specs):
+    from local_models.registry import Registry
+    return Registry(path, type(specs[0]), specs[0].name, {s.name: s for s in specs})

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from local_models import servers
-from local_models.decision.registry import ModelSpec, Registry
+from conftest import decision_spec, registry_of
 
 
 @pytest.fixture(autouse=True)
@@ -38,12 +38,8 @@ def test_pid_of_a_live_server(tmp_path):
     assert servers.pid_of("m") == os.getpid()
 
 
-def test_state():
-    assert [servers.state(i, p) for i, p in ((1, 1), (1, None), (None, 1), (None, None))] == ["running", "external", "starting", "stopped"]
-
-
 def test_busy_port_names_the_model_holding_it(tmp_path, monkeypatch):
-    reg = Registry(tmp_path / "models.toml", "a", {n: ModelSpec(n, run=n, port=8011) for n in "ab"})
+    reg = registry_of(tmp_path / "models.toml", decision_spec("a", port=8011), decision_spec("b", port=8011))
     (tmp_path / "a.pid").write_text(str(os.getpid()))
     monkeypatch.setattr(servers, "port_in_use", lambda port: True)
     with pytest.raises(SystemExit, match="port 8011 is in use by a; stop it first"):

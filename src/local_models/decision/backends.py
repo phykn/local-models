@@ -7,12 +7,12 @@ class BackendError(Exception):
     pass
 
 
-def normalize(raw, min_confidence):
+def normalize(raw):
     t = raw["type"]
     if t == "noul":
         p = raw["noul"]
         # a noul has no confidence of its own; |p - 0.5| * 2 is Kev's choice confidence for two options,
-        # so one min_confidence means the same for every question type
+        # so one threshold means the same for every question type
         out = {"answer": p >= 0.5, "probability_yes": p, "confidence": round(abs(p - 0.5) * 2, 4)}
     elif t == "choice":
         out = {"answer": raw["choice"], "confidence": raw["confidence"], "probabilities": raw["probabilities"]}
@@ -21,7 +21,7 @@ def normalize(raw, min_confidence):
         mode = max(probs, key=probs.get)
         out = {"answer": legend[mode], "score": raw["score"], "confidence": raw["confidence"],
                "probabilities": {legend[k]: v for k, v in probs.items()}}
-    return {"type": t, **out, "low_confidence": out["confidence"] < min_confidence}
+    return {"type": t, **out, "low_confidence": out["confidence"] < 0.5}
 
 
 class KevHttpBackend:
@@ -34,7 +34,7 @@ class KevHttpBackend:
 
     async def decide(self, state, questions):
         body = {"state": state, "model": "kev-latest", "questions": questions}
-        if await self.info() is None:   # models can share a port, so the server there may be another model
+        if await self.info() is None:
             raise BackendError(self.not_running())
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as c:
@@ -48,7 +48,7 @@ class KevHttpBackend:
         if r.is_error:
             raise BackendError(f"model {self.spec.name!r} answered HTTP {r.status_code}: {r.text[:300]}")
         d = r.json()
-        answers = {qid: normalize(a, self.spec.min_confidence) for qid, a in d["answers"].items()}
+        answers = {qid: normalize(a) for qid, a in d["answers"].items()}
         return {"model": self.spec.name, "answers": answers, "latency_ms": d.get("latency_ms")}
 
     async def info(self):
@@ -59,14 +59,9 @@ class KevHttpBackend:
             m = r.json()["models"][0]
         except (httpx.HTTPError, ValueError, KeyError, IndexError):   # nothing there, or a server that is not Kev
             return None
-        if not self.serves(m.get("run") or ""):
+        if m.get("run") != self.spec.run:   # models can share a port, so the server there may be another model
             return None
         return {k: m.get(k) for k in ("run", "base", "backend", "dtype", "temperature", "device")}
-
-    def serves(self, run):
-        # kev.serve reports the --run it got: the id as written, or a local checkpoint as an absolute path
-        want = self.spec.run
-        return run == want or run.endswith("/" + want.strip("/"))
 
     def not_running(self):
         return f"model {self.spec.name!r} is not running on {self.url}. Start it with: decisionctl start {self.spec.name}"

@@ -78,17 +78,14 @@ def models():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--server", required=True, choices=list(RUNTIMES))
-    ap.add_argument("--run", required=True, help="Hugging Face id@revision, or the model folder")
+    ap.add_argument("--run", required=True, help="Hugging Face id@revision")
     ap.add_argument("--port", type=int, required=True)
     a = ap.parse_args()
     import torch
     from huggingface_hub import snapshot_download
 
-    if "@" in a.run:
-        repo, rev = a.run.split("@", 1)
-        path = Path(snapshot_download(repo, revision=rev))
-    else:
-        path = Path(a.run)
+    repo, rev = a.run.split("@", 1)
+    path = Path(snapshot_download(repo, revision=rev))
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     app.state.runtime = WORKER.submit(RUNTIMES[a.server], path, device).result()
     app.state.server, app.state.run, app.state.device = a.server, a.run, device

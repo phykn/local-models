@@ -44,7 +44,7 @@ async def list_models() -> dict:
     for spec in reg.models.values():
         info = await KevHttpBackend(spec).info()
         models.append({"name": spec.name, "description": spec.description, "default": spec.name == reg.default,
-                       "running": info is not None, "min_confidence": spec.min_confidence,
+                       "running": info is not None,
                        **({"serving": info} if info else {"start": f"decisionctl start {spec.name}"})})
     return {"models": models}
 
